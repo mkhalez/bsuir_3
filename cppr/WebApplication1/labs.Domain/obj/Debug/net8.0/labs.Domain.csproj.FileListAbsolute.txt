@@ -1,0 +1,12 @@
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/bin/Debug/net8.0/labs.Domain.deps.json
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/bin/Debug/net8.0/labs.Domain.dll
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/bin/Debug/net8.0/labs.Domain.pdb
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/labs.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/labs.Domain.AssemblyInfoInputs.cache
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/labs.Domain.AssemblyInfo.cs
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/labs.Domain.csproj.CoreCompileInputs.cache
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/labs.Domain.sourcelink.json
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/labs.Domain.dll
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/refint/labs.Domain.dll
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/labs.Domain.pdb
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/obj/Debug/net8.0/ref/labs.Domain.dll

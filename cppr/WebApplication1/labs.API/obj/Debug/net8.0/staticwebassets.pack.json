@@ -1,0 +1,41 @@
+{
+  "Files": [
+    {
+      "Id": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/Борщ.jpg",
+      "PackagePath": "staticwebassets/Images/Борщ.jpg"
+    },
+    {
+      "Id": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/Лимонад.jpg",
+      "PackagePath": "staticwebassets/Images/Лимонад.jpg"
+    },
+    {
+      "Id": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/Стейк.jpg",
+      "PackagePath": "staticwebassets/Images/Стейк.jpg"
+    },
+    {
+      "Id": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/Харчо.jpg",
+      "PackagePath": "staticwebassets/Images/Харчо.jpg"
+    },
+    {
+      "Id": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/Цезарь.jpg",
+      "PackagePath": "staticwebassets/Images/Цезарь.jpg"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.build.labs.API.props",
+      "PackagePath": "build\\labs.API.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildMultiTargeting.labs.API.props",
+      "PackagePath": "buildMultiTargeting\\labs.API.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildTransitive.labs.API.props",
+      "PackagePath": "buildTransitive\\labs.API.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.labs.API.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    }
+  ],
+  "ElementsToRemove": []
+}
