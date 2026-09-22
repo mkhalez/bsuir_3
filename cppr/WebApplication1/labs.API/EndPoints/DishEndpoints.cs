@@ -1,8 +1,10 @@
+using System.Text.Json;
 using labs.API.Data;
 using labs.API.Use_Cases;
 using labs.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace labs.API.EndPoints;
@@ -11,7 +13,8 @@ public static class DishEndpoints
 {
     public static void MapDishEndpoints(this IEndpointRouteBuilder routes)
     {
-        var group = routes.MapGroup("/api/Dish");
+        var group = routes.MapGroup("/api/Dish")
+            .DisableAntiforgery();
 
         // список с фильтром по категории и пагинацией
         group.MapGet("/{category:alpha?}", async (
@@ -51,11 +54,26 @@ public static class DishEndpoints
         })
         .WithName("UpdateDish");
 
-        group.MapPost("/", async (Dish dish, AppDbContext db) =>
+        group.MapPost("/", async (
+            [FromForm] string dish,
+            [FromForm] IFormFile? file,
+            AppDbContext db,
+            IMediator mediator) =>
         {
-            db.Dishes.Add(dish);
+            var newDish = JsonSerializer.Deserialize<Dish>(dish);
+            if (newDish is null)
+            {
+                return Results.BadRequest("Некорректные данные блюда");
+            }
+
+            if (file is not null)
+            {
+                newDish.Image = await mediator.Send(new SaveImage(file));
+            }
+
+            db.Dishes.Add(newDish);
             await db.SaveChangesAsync();
-            return TypedResults.Created($"/api/Dish/{dish.Id}", dish);
+            return TypedResults.Created($"/api/Dish/{newDish.Id}", newDish);
         })
         .WithName("CreateDish");
 

@@ -1,8 +1,12 @@
 using labs.API.Data;
 using labs.API.EndPoints;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using labs.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDbContext<TempDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("TempDbContext") ?? throw new InvalidOperationException("Connection string 'TempDbContext' not found.")));
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres");
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -15,6 +19,8 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

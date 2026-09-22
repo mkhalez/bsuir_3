@@ -25,3 +25,7 @@ build_property.SupportLocalizedComponentNames =
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
 build_property.MSBuildProjectDirectory = /home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API
 build_property._RazorSourceGeneratorDebug = 
+
+[/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/Pages/_ValidationScriptsPartial.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvX1ZhbGlkYXRpb25TY3JpcHRzUGFydGlhbC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
