@@ -1,0 +1,79 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Панель сотрудника{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+    <h1>Панель менеджера коммерческой службы</h1>
+    <p style="color: green; font-weight: bold;">Уровень доступа: Персонал / Мониторинг продаж</p>
+
+    <hr>
+    <h2>📊 База клиентов компании</h2>
+    <table border="1" cellpadding="5">
+        <thead>
+            <tr>
+                <th>ФИО Клиента</th>
+                <th>Адрес проживания</th>
+                <th>Контактный телефон</th>
+                <th>Возраст</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in all_clients %}
+            <tr>
+                <td>{{ c.last_name }} {{ c.first_name }} {{ c.middle_name|default:"" }}</td>
+                <td>{{ c.address }}</td>
+                <td><code>{{ c.phone }}</code></td>
+                <td>{{ c.age }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">Зарегистрированных клиентов пока нет.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    <h2>🚗 Мониторинг всех активных и завершенных прокатов</h2>
+    <table border="1" cellpadding="5" style="width: 100%; border-collapse: collapse;">
+        <thead style="background-color: #f2f2f2;">
+            <tr>
+                <th>ID</th>
+                <th>Клиент</th>
+                <th>Автомобиль</th>
+                <th>Дата выдачи</th>
+                <th>Дней</th>
+                <th>Дата возврата</th>
+                <th>Итоговая сумма</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rental in all_rentals %}
+            <tr>
+                <td>{{ rental.id }}</td>
+                <td>{{ rental.client.last_name }} {{ rental.client.first_name.0 }}.</td>
+                <td>{{ rental.car }}</td>
+                <td>{{ rental.rent_date|date:"d/m/Y" }}</td>
+                <td align="center">{{ rental.days_count }}</td>
+                <td>{{ rental.return_date|date:"d/m/Y" }}</td>
+                <td><strong>{{ rental.total_price }} BYN</strong></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">Договоров аренды в базе данных не обнаружено.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    <h3>Управление промокодами</h3>
+    <ul>
+        {% for promo in active_promos %}
+            <li>
+                <code>{{ promo.code }}</code> — скидка {{ promo.discount_amount }}% 
+                {% if promo.is_archived %}<span style="color: red;">(В архиве)</span>{% else %}<span style="color: green;">(Активен)</span>{% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Для просмотра панели сотрудника нужно <a href="{% url 'lab_5:login' %}">войти в аккаунт</a>.</p>
+{% endif %}
+{% endblock %}

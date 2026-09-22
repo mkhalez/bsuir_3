@@ -1,0 +1,61 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Статистика и время — Прокат авто{% endblock %}
+
+{% block content %}
+<h1>📊 Статистические показатели предметной области</h1>
+<p>Общая сумма оформленных прокатов: <strong>{{ total_sales }} BYN</strong></p>
+<ul>
+    <li><strong>Среднее значение (Mean) суммы проката:</strong> {{ mean_price }} BYN</li>
+    <li><strong>Медиана (Median) сумм проката:</strong> {{ median_price }} BYN</li>
+    <li><strong>Мода (Mode) сумм проката:</strong> {{ mode_price }}</li>
+    <li><strong>Самый популярный тип кузова / категория авто:</strong> <mark>{{ popular_category }}</mark></li>
+</ul>
+
+<h3>👥 Демографические показатели клиентов</h3>
+<ul>
+    <li><strong>Средний возраст клиентов:</strong> {{ mean_age }} лет</li>
+    <li><strong>Медианный возраст клиентов:</strong> {{ median_age }} лет</li>
+</ul>
+
+<hr>
+<h2>📈 Визуализация данных (Диаграмма Matplotlib)</h2>
+{% if chart_image %}
+    <div style="margin: 20px 0;">
+        <img src="data:image/png;base64,{{ chart_image }}" alt="График статистики автопарка" style="border: 1px solid #ddd; padding: 5px; background: white;">
+    </div>
+{% else %}
+    <p>Недостаточно данных в базе для построения графика.</p>
+{% endif %}
+
+<hr>
+<h1>⏰ Таймзоны и системное время</h1>
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Показатель</th>
+        <th>Таймзона пользователя</th>
+        <th>Время в формате UTC</th>
+    </tr>
+    <tr>
+        <td><strong>Таймзона:</strong></td>
+        <td>{{ user_timezone_name }}</td>
+        <td>UTC</td>
+    </tr>
+    <tr>
+        <td><strong>Текущая дата:</strong></td>
+        <td>{{ now_local|date:"d/m/Y" }}</td>
+        <td>{{ now_utc|date:"d/m/Y" }}</td>
+    </tr>
+    <tr>
+        <td><strong>Текущее время:</strong></td>
+        <td>{{ now_local|date:"d/m/Y H:i:s" }}</td>
+        <td>{{ now_utc|date:"d/m/Y H:i:s" }}</td>
+    </tr>
+</table>
+
+<hr>
+<h2>📅 Календарь на текущий месяц</h2>
+<pre style="font-family: monospace; background-color: #f0f0f0; padding: 10px; width: fit-content;">
+{{ html_calendar }}
+</pre>
+{% endblock %}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Прокат авто{% endblock %}</title>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="{% url 'lab_5:home' %}">Главная</a> | 
+            <a href="{% url 'lab_5:about' %}">О компании</a> |
+            <a href="{% url 'lab_5:cars_list' %}">Наш автопарк</a> |
+            {% if user.is_superuser %}
+                <a href="{% url 'lab_5:statistics' %}">Статистика сайта</a> |
+            {% endif %}
+            <a href="{% url 'lab_5:reviews' %}">Отзывы</a> |
+            <a href="{% url 'lab_5:contacts' %}">Контакты</a> |
+            <a href="{% url 'lab_5:vacancies' %}">Вакансии</a> |
+            <a href="{% url 'lab_5:faq' %}">FAQ</a> |
+            <a href="{% url 'lab_5:news' %}">Новости</a> |
+            
+            <span style="float: right;">
+                {% if user.is_authenticated %}
+                    {% if user.is_staff %}
+                        <a href="{% url 'lab_5:profile' %}">Панель управления</a> | 
+                        Сотрудник: <strong>{{ user.username }}</strong>!
+                    {% else %}
+                        <a href="{% url 'lab_5:profile' %}">Личный кабинет</a> | 
+                        Добро пожаловать, <strong>{{ user.username }}</strong>!
+                    {% endif %}
+                    | <a href="{% url 'lab_5:logout' %}">Выйти</a>
+                {% else %}
+                    <a href="{% url 'lab_5:login' %}">Войти</a> | 
+                    <a href="{% url 'lab_5:register' %}">Регистрация</a>
+                {% endif %}
+            </span>
+        </nav>
+    </header>
+
+    {# Сюда дочерние шаблоны будут вставлять свой уникальный контент #}
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</body>
+</html>

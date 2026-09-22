@@ -1,0 +1,15 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Вакансии{% endblock %}
+
+{% block content %}
+<h1>Актуальные вакансии</h1>
+
+{% for vac in vacancies %}
+    <h2>{{ vac.title }} (ЗП: {{ vac.salary }})</h2>
+    <p>{{ vac.description }}</p>
+    <hr>
+{% empty %}
+    <p>На данный момент открытых вакансий нет.</p>
+{% endfor %}
+{% endblock %}

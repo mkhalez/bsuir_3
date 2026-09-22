@@ -1,0 +1,19 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Вход на сайт{% endblock %}
+
+{% block content %}
+<h1>Авторизация</h1>
+
+{% if user.is_authenticated %}
+    <p>Вы уже вошли как <strong>{{ user.username }}</strong>.</p>
+    <p><a href="{% url 'lab_5:profile' %}">Перейти в личный кабинет</a></p>
+{% else %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Войти</button>
+    </form>
+    <p>Ещё не зарегистрированы? <a href="{% url 'lab_5:register' %}">Регистрация</a></p>
+{% endif %}
+{% endblock %}

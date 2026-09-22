@@ -1,0 +1,20 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Отмена заказа{% endblock %}
+
+{% block content %}
+<h1>Вы уверены, что хотите отменить прокат?</h1>
+<p>Автомобиль: <strong>{{ rental.car }}</strong></p>
+<p>Дата начала: {{ rental.rent_date|date:"d/m/Y" }}</p>
+
+{% if user.is_authenticated %}
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" style="color: red; font-weight: bold;">Да, отменить заказ</button>
+    </form>
+{% else %}
+    <p>Для отмены заказа нужно <a href="{% url 'lab_5:login' %}">войти в аккаунт</a>.</p>
+{% endif %}
+
+<p><a href="{% url 'lab_5:profile' %}">Нет, вернуться в личный кабинет</a></p>
+{% endblock %}

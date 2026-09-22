@@ -1,0 +1,16 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}FAQ / Словарь{% endblock %}
+
+{% block content %}
+<h1>Словарь терминов и часто задаваемые вопросы</h1>
+
+{% for item in faqs %}
+    <h3>❓ {{ item.question }}</h3>
+    <p>❗ {{ item.answer }}</p>
+    <small>Добавлено: {{ item.created_at|date:"d/m/Y" }}</small>
+    <hr>
+{% empty %}
+    <p>Словарь терминов пока пуст. Добавьте записи в админке.</p>
+{% endfor %}
+{% endblock %}

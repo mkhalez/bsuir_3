@@ -1,0 +1,31 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Отзывы о прокате{% endblock %}
+
+{% block content %}
+<h1>Отзывы наших клиентов</h1>
+
+<div style="background-color: #f0f4f8; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+    <h3>Оставить свой отзыв</h3>
+    {% if user.is_authenticated %}
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Отправить отзыв</button>
+        </form>
+    {% else %}
+        <p>Чтобы оставить отзыв, пожалуйста, <a href="{% url 'lab_5:login' %}">войдите в аккаунт</a> или <a href="{% url 'lab_5:register' %}">зарегистрируйтесь</a>.</p>
+    {% endif %}
+</div>
+
+<h2>Что о нас говорят:</h2>
+{% for review in reviews %}
+    <div style="border-bottom: 1px solid #ccc; padding: 10px 0;">
+        <strong>{{ review.user_name }}</strong> — оценка: <span style="color: gold;">{{ review.rating }}/5</span> <br>
+        <small>Добавлен: {{ review.created_at|date:"d/m/Y H:i" }}</small>
+        <p>{{ review.text }}</p>
+    </div>
+{% empty %}
+    <p>Отзывов пока нет. Будьте первым!</p>
+{% endfor %}
+{% endblock %}

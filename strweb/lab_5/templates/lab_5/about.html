@@ -1,0 +1,19 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}О компании — Прокат авто{% endblock %}
+
+{% block content %}
+<h1>О нашей компании</h1>
+
+{% if company_info %}
+    <h2>{{ company_info.title }}</h2>
+    <p>{{ company_info.text_content }}</p>
+    
+    {% if company_info.history_years %}
+        <h3>Наша история по годам:</h3>
+        <p>{{ company_info.history_years }}</p>
+    {% endif %}
+{% else %}
+    <p>Информация о компании пока не заполнена в базе данных. Добавьте её через панель администратора в таблицу Company Info.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Главная страница — Прокат авто{% endblock %}
+
+{% block content %}
+<h1>Добро пожаловать в наш прокат автомобилей!</h1>
+
+{% if user.is_authenticated %}
+    <p>Рады снова видеть вас, <strong>{{ user.username }}</strong>.</p>
+{% else %}
+    <p>Чтобы оформить прокат, <a href="{% url 'lab_5:login' %}">войдите</a> или <a href="{% url 'lab_5:register' %}">зарегистрируйтесь</a>.</p>
+{% endif %}
+
+<h2>Последняя опубликованная статья:</h2>
+
+{% if latest_news %}
+    <article>
+        <h3>{{ latest_news.title }}</h3>
+        <p><strong>Кратко:</strong> {{ latest_news.short_description }}</p>
+        <p>{{ latest_news.content }}</p>
+        <small>Опубликовано: {{ latest_news.published_at|date:"d/m/Y H:i" }}</small>
+    </article>
+    <p><a href="{% url 'lab_5:news' %}">Все новости</a></p>
+{% else %}
+    <p>На данный момент никаких статей и новостей не опубликовано. Зайдите в админку и добавьте первую новость в таблицу News!</p>
+{% endif %}
+{% endblock %}

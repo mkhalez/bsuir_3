@@ -1,0 +1,26 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Контакты{% endblock %}
+
+{% block content %}
+<h1>Наша команда</h1>
+
+{% for emp in employees %}
+    <div style="margin-bottom: 30px; overflow: auto;">
+        {% if emp.photo %}
+            <div style="float: left; margin-right: 20px;">
+                <img src="{{ emp.photo.url }}" alt="{{ emp.full_name }}" style="max-width: 150px; height: auto; border-radius: 8px; border: 1px solid #ccc;">
+            </div>
+        {% endif %}
+
+        <div style="float: left;">
+            <h3>{{ emp.full_name }} — {{ emp.position }}</h3>
+            <p><strong>Телефон:</strong> {{ emp.phone }} | <strong>Email:</strong> {{ emp.email }}</p>
+            <p><strong>Возраст сотрудника:</strong> {{ emp.age }}</p>
+        </div>
+    </div>
+    <hr style="clear: both;">
+{% empty %}
+    <p>Список сотрудников пуст. Добавьте их через админку.</p>
+{% endfor %}
+{% endblock %}

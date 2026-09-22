@@ -1,0 +1,19 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Редактирование проката{% endblock %}
+
+{% block content %}
+<h1>Изменить параметры проката автомобиля</h1>
+<p>Вы редактируете заказ №{{ rental.id }}</p>
+
+{% if user.is_authenticated %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Сохранить изменения</button>
+    </form>
+    <p><a href="{% url 'lab_5:profile' %}">Отмена (Назад в профиль)</a></p>
+{% else %}
+    <p>Для редактирования заказа нужно <a href="{% url 'lab_5:login' %}">войти в аккаунт</a>.</p>
+{% endif %}
+{% endblock %}

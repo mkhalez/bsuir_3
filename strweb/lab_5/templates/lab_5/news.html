@@ -1,0 +1,24 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Новости{% endblock %}
+
+{% block content %}
+<h1>Новости</h1>
+
+{% for news in news_list %}
+    <article>
+        <h2>{{ news.title }}</h2>
+        <p><strong>Кратко:</strong> {{ news.short_description }}</p>
+
+        {% if news.image %}
+            <img src="{{ news.image.url }}" alt="{{ news.title }}" width="300">
+        {% endif %}
+
+        <p>{{ news.content }}</p>
+        <small>Опубликовано: {{ news.published_at|date:"d/m/Y H:i" }}</small>
+    </article>
+    <hr>
+{% empty %}
+    <p>Новостей пока нет.</p>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Наш автопарк — Прокат авто{% endblock %}
+
+{% block content %}
+<h1>Автомобили, доступные для проката</h1>
+
+<div style="background-color: #f0f4f8; padding: 12px; margin-bottom: 20px; border-left: 4px solid #0056b3; font-family: sans-serif;">
+    <strong>Курсы валют НБРБ на сегодня:</strong> &nbsp;&nbsp; 
+    💵 1 USD = <code style="font-size: 1.1em;">{{ usd_rate }} BYN</code> &nbsp;&nbsp;|&nbsp;&nbsp; 
+    💶 1 EUR = <code style="font-size: 1.1em;">{{ eur_rate }} BYN</code>
+</div>
+
+<form method="get" style="background-color: #f9f9f9; padding: 15px; border: 1px solid #ddd; margin-bottom: 20px;">
+    <label for="search">Поиск:</label>
+    <input type="text" id="search" name="search" value="{{ search_query }}" placeholder="Бренд или модель...">
+    
+    &nbsp;&nbsp;&nbsp;
+
+    <label for="category">Категория:</label>
+    <select id="category" name="category">
+        <option value="">Все категории</option>
+        {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if selected_category == cat.id|slugify %}selected{% endif %}>
+                {{ cat.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    &nbsp;&nbsp;&nbsp;
+
+    <label for="sort">Сортировать по:</label>
+    <select id="sort" name="sort">
+        <option value="">Без сортировки</option>
+        <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Цена: по возрастанию</option>
+        <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Цена: по убыванию</option>
+        <option value="year_desc" {% if selected_sort == 'year_desc' %}selected{% endif %}>Год: сначала новые</option>
+    </select>
+
+    &nbsp;&nbsp;&nbsp;
+
+    <button type="submit" style="font-weight: bold;">Применить</button>
+    <a href="{% url 'lab_5:cars_list' %}">Сбросить</a>
+</form>
+
+{% if cars %}
+    <ul>
+        {% for car in cars %}
+            <li>
+                <strong>{{ car.brand }} {{ car.model_name }}</strong> — {{ car.year }} год выпуска. <br>
+                Гос. номер: <code>{{ car.license_plate }}</code> <br>
+                Категория: {{ car.car_type.name }} <br>
+                Стоимость суток проката: <strong style="color: green;">{{ car.rental_price_per_day }} BYN</strong> 
+                <span style="color: #555; font-size: 0.95em;">(≈ ${{ car.price_usd }} / €{{ car.price_eur }})</span>
+            </li>
+            <br> 
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Машин с такими параметрами не найдено. Попробуйте изменить критерии поиска!</p>
+{% endif %}
+{% endblock %}

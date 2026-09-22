@@ -1,0 +1,84 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Личный кабинет{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+    <h1>Личный кабинет клиента</h1>
+
+    <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #ddd; max-width: 500px; margin-bottom: 25px;">
+        <h3>Личные данные (Ограничение 18+)</h3>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div style="color: red; margin-bottom: 10px;">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+                <div style="margin-bottom: 12px;">
+                    <label><strong>{{ field.label }}:</strong></label><br>
+                    {{ field }}
+                    
+                    {% if field.errors %}
+                        <div style="color: red; font-size: 0.85em; margin-top: 4px;">
+                            {{ field.errors.0 }}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            
+            <button type="submit" style="padding: 5px 15px; cursor: pointer;">Сохранить изменения</button>
+        </form>
+    </div>
+
+    <hr>
+    <h2>Мои арендованные автомобили</h2>
+    <p><a href="{% url 'lab_5:create_rental' %}">➕ Оформить новый прокат авто</a></p>
+
+    {% if my_rentals %}
+        <table border="1" cellpadding="5">
+            <thead>
+                <tr>
+                    <th>Автомобиль</th>
+                    <th>Дата выдачи</th>
+                    <th>Дней аренды</th>
+                    <th>Дата возврата</th>
+                    <th>Итоговая стоимость</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rental in my_rentals %}
+                <tr>
+                    <td>{{ rental.car }}</td>
+                    <td>{{ rental.rent_date|date:"d/m/Y" }}</td>
+                    <td>{{ rental.days_count }}</td>
+                    <td>{{ rental.return_date|date:"d/m/Y" }}</td>
+                    <td><strong>{{ rental.total_price }} BYN</strong></td>
+                    <td>
+                        <a href="{% url 'lab_5:edit_rental' rental.id %}">✏️ Изменить</a> | 
+                        <a href="{% url 'lab_5:delete_rental' rental.id %}" style="color: red;">❌ Отменить</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Вы еще не оформляли прокат автомобилей.</p>
+    {% endif %}
+
+    <hr>
+    <h3>Доступные вам промокоды:</h3>
+    <ul>
+        {% for promo in active_promos %}
+            <li><code>{{ promo.code }}</code> — скидка {{ promo.discount_amount }}%</li>
+        {% empty %}
+            <li>Активных промокодов нет.</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Для просмотра личного кабинета нужно <a href="{% url 'lab_5:login' %}">войти в аккаунт</a>.</p>
+{% endif %}
+{% endblock %}
