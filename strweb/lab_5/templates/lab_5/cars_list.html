@@ -51,7 +51,8 @@
                 Гос. номер: <code>{{ car.license_plate }}</code> <br>
                 Категория: {{ car.car_type.name }} <br>
                 Стоимость суток проката: <strong style="color: green;">{{ car.rental_price_per_day }} BYN</strong> 
-                <span style="color: #555; font-size: 0.95em;">(≈ ${{ car.price_usd }} / €{{ car.price_eur }})</span>
+                <span style="color: #555; font-size: 0.95em;">(≈ ${{ car.price_usd }} / €{{ car.price_eur }})</span><br>
+                <a href="{% url 'lab_5:car_detail' car.id %}">Подробнее / Добавить в корзину</a>
             </li>
             <br> 
         {% endfor %}

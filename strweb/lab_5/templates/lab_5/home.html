@@ -11,17 +11,70 @@
     <p>Чтобы оформить прокат, <a href="{% url 'lab_5:login' %}">войдите</a> или <a href="{% url 'lab_5:register' %}">зарегистрируйтесь</a>.</p>
 {% endif %}
 
+{# Рекламный баннер: несколько картинок #}
+<section aria-label="Реклама компании">
+    <h2>Наши преимущества</h2>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <img src="/media/news/Screenshot_from_2025-08-20_18-02-39.png" alt="Баннер: выгодный прокат" width="300" height="150" loading="lazy">
+        <img src="/media/employees/Screenshot_from_2025-09-19_21-13-03.png" alt="Баннер: наш офис" width="300" height="150" loading="lazy">
+        <img src="/media/news/Screenshot_from_2025-08-20_18-02-39.png" alt="Баннер: акция недели" width="300" height="150" loading="lazy">
+    </div>
+</section>
+
+{# Каталог услуг/товаров #}
+<section aria-label="Каталог автомобилей">
+    <h2>Каталог автомобилей</h2>
+    {% if catalog_cars %}
+        <ul>
+            {% for car in catalog_cars %}
+                <li>
+                    <strong>{{ car.brand }} {{ car.model_name }}</strong> ({{ car.year }}) —
+                    {{ car.rental_price_per_day }} BYN/сутки
+                    <a href="{% url 'lab_5:car_detail' car.id %}">Подробнее</a>
+                </li>
+            {% endfor %}
+        </ul>
+        <p><a href="{% url 'lab_5:cars_list' %}">Весь автопарк</a> | <a href="{% url 'lab_5:cart' %}">Корзина</a></p>
+    {% else %}
+        <p>Каталог пока пуст. Добавьте автомобили через админку.</p>
+    {% endif %}
+</section>
+
 <h2>Последняя опубликованная статья:</h2>
 
 {% if latest_news %}
     <article>
         <h3>{{ latest_news.title }}</h3>
         <p><strong>Кратко:</strong> {{ latest_news.short_description }}</p>
-        <p>{{ latest_news.content }}</p>
+        {% if latest_news.image %}
+            <img src="{{ latest_news.image.url }}" alt="{{ latest_news.title }}" width="300" loading="lazy">
+        {% endif %}
+        <p><a href="{% url 'lab_5:news_detail' latest_news.id %}">Читать далее</a></p>
         <small>Опубликовано: {{ latest_news.published_at|date:"d/m/Y H:i" }}</small>
     </article>
     <p><a href="{% url 'lab_5:news' %}">Все новости</a></p>
 {% else %}
     <p>На данный момент никаких статей и новостей не опубликовано. Зайдите в админку и добавьте первую новость в таблицу News!</p>
 {% endif %}
+
+{# Партнеры: логотипы со ссылками #}
+<section aria-label="Наши партнеры">
+    <h2>Наши партнеры</h2>
+    {% if partners %}
+        <ul style="list-style: none; display: flex; gap: 20px; flex-wrap: wrap; padding: 0;">
+            {% for p in partners %}
+                <li>
+                    <a href="{{ p.website_url }}" target="_blank" rel="noopener">
+                        {% if p.logo %}
+                            <img src="{{ p.logo.url }}" alt="Логотип {{ p.name }}" width="120" loading="lazy"><br>
+                        {% endif %}
+                        {{ p.name }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Партнеры пока не добавлены (таблица Partner в админке).</p>
+    {% endif %}
+</section>
 {% endblock %}

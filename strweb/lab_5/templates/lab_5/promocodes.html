@@ -1,0 +1,29 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Промокоды и купоны{% endblock %}
+
+{% block content %}
+<h1>Промокоды и купоны</h1>
+
+<h2>Действующие</h2>
+{% if active %}
+    <ul>
+        {% for p in active %}
+            <li><strong>{{ p.code }}</strong> — скидка {{ p.discount_amount }}%</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Действующих промокодов нет.</p>
+{% endif %}
+
+<h2>Архив</h2>
+{% if archived %}
+    <ul>
+        {% for p in archived %}
+            <li><s>{{ p.code }}</s> — скидка {{ p.discount_amount }}% (в архиве)</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Архив пуст.</p>
+{% endif %}
+{% endblock %}

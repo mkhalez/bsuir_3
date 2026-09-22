@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     CarType, Car, Discount, Client, Review, Employee, 
-    Vacancy, FAQ, Rental, News, CompanyInfo, CarTechnicalPassport, PromoCode, Penalty
+    Vacancy, FAQ, Rental, News, CompanyInfo, CarTechnicalPassport, PromoCode, Penalty,
+    Partner
 )
 
 admin.site.register(CarType)
@@ -15,6 +16,7 @@ admin.site.register(Vacancy)
 admin.site.register(Review)
 admin.site.register(PromoCode)
 admin.site.register(Penalty)
+admin.site.register(Partner)
 
 @admin.register(Car)
 class CarAdmin(admin.ModelAdmin):

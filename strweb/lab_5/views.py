@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from .models import CompanyInfo, News, Car, CarType
+from .models import CompanyInfo, News, Car, CarType, Partner
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.shortcuts import render, redirect
@@ -31,9 +31,14 @@ def home_view(request):
     """Контроллер главной страницы"""
     logger.debug("Запрос главной страницы")
     latest_news = News.objects.order_by('-published_at').first()
-    
+    # Каталог услуг/товаров для главной + партнеры + баннер (первые авто)
+    catalog_cars = Car.objects.select_related('car_type').all()[:6]
+    partners = Partner.objects.all()
+
     context = {
-        'latest_news': latest_news
+        'latest_news': latest_news,
+        'catalog_cars': catalog_cars,
+        'partners': partners,
     }
     return render(request, 'lab_5/home.html', context)
 
@@ -437,3 +442,130 @@ def privacy_view(request):
 def news_view(request):
     news_list = News.objects.order_by('-published_at')
     return render(request, 'lab_5/news.html', {'news_list': news_list})
+
+
+def news_detail_view(request, news_id):
+    """Страница отдельной статьи (кнопка «Читать далее»)"""
+    article = get_object_or_404(News, id=news_id)
+    return render(request, 'lab_5/news_detail.html', {'article': article})
+
+
+def promocodes_view(request):
+    """Промокоды и купоны: действующие и архив"""
+    active = PromoCode.objects.filter(is_archived=False)
+    archived = PromoCode.objects.filter(is_archived=True)
+    return render(request, 'lab_5/promocodes.html', {'active': active, 'archived': archived})
+
+
+# --- Товар / Корзина / Оплата (сессия, без изменения БД до оплаты) ---
+
+def _get_cart(request):
+    return request.session.get('cart', {})
+
+
+def _save_cart(request, cart):
+    request.session['cart'] = cart
+    request.session.modified = True
+
+
+def car_detail_view(request, car_id):
+    """Страница товара/услуги с кнопкой «Добавить в корзину»"""
+    car = get_object_or_404(Car, id=car_id)
+    return render(request, 'lab_5/car_detail.html', {'car': car})
+
+
+def cart_add_view(request, car_id):
+    """Добавить товар в корзину (POST)"""
+    car = get_object_or_404(Car, id=car_id)
+    cart = _get_cart(request)
+    key = str(car.id)
+    days = int(request.POST.get('days', 1) or 1)
+    days = max(1, min(days, 30))
+    cart[key] = cart.get(key, 0) + days
+    if cart[key] > 30:
+        cart[key] = 30
+    _save_cart(request, cart)
+    logger.info(f"В корзину добавлен {car} на {days} сут.")
+    return redirect('lab_5:cart')
+
+
+def cart_view(request):
+    """Страница корзины: список, увеличить/уменьшить, удалить, оплатить"""
+    cart = _get_cart(request)
+    items = []
+    total = 0
+    for car_id, days in cart.items():
+        try:
+            car = Car.objects.get(id=int(car_id))
+        except Car.DoesNotExist:
+            continue
+        cost = float(car.rental_price_per_day) * int(days)
+        total += cost
+        items.append({'car': car, 'days': int(days), 'cost': round(cost, 2)})
+    return render(request, 'lab_5/cart.html', {'items': items, 'total': round(total, 2)})
+
+
+def cart_update_view(request, car_id):
+    """Увеличить/уменьшить количество (суток)"""
+    cart = _get_cart(request)
+    key = str(car_id)
+    if key in cart:
+        action = request.POST.get('action', 'inc')
+        if action == 'inc':
+            cart[key] = min(int(cart[key]) + 1, 30)
+        elif action == 'dec':
+            cart[key] = int(cart[key]) - 1
+            if cart[key] <= 0:
+                del cart[key]
+        _save_cart(request, cart)
+    return redirect('lab_5:cart')
+
+
+def cart_remove_view(request, car_id):
+    """Удалить товар из корзины"""
+    cart = _get_cart(request)
+    key = str(car_id)
+    if key in cart:
+        del cart[key]
+        _save_cart(request, cart)
+    return redirect('lab_5:cart')
+
+
+def checkout_view(request):
+    """Страница оплаты: итог + форма оплаты (демо)"""
+    cart = _get_cart(request)
+    items = []
+    total = 0
+    for car_id, days in cart.items():
+        try:
+            car = Car.objects.get(id=int(car_id))
+        except Car.DoesNotExist:
+            continue
+        cost = float(car.rental_price_per_day) * int(days)
+        total += cost
+        items.append({'car': car, 'days': int(days), 'cost': round(cost, 2)})
+    if request.method == 'POST':
+        # Демо-оплата: очищаем корзину, показываем успех.
+        # Если пользователь залогинен — создаем Rental-записи.
+        if request.user.is_authenticated:
+            client, _ = Client.objects.get_or_create(
+                first_name=request.user.first_name or request.user.username,
+                last_name=request.user.last_name or "Пользователь",
+                defaults={'address': 'Не указан', 'phone': '+375 (29) 000-00-00', 'age': 20},
+            )
+            for it in items:
+                Rental.objects.create(
+                    car=it['car'], client=client,
+                    rent_date=timezone.now().date(),
+                    days_count=it['days'],
+                )
+        _save_cart(request, {})
+        logger.info(f"Оплата выполнена на сумму {total} BYN.")
+        return render(request, 'lab_5/payment_success.html', {'total': round(total, 2)})
+    return render(request, 'lab_5/checkout.html', {'items': items, 'total': round(total, 2)})
+
+
+def lr1_demo_view(request):
+    """Демо-страница ЛР1 СТРВП: все требуемые HTML-элементы на одной странице."""
+    logger.debug("Запрос демо-страницы ЛР1 (HTML)")
+    return render(request, 'lab_5/lr1_demo.html')

@@ -1,0 +1,14 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Оплата прошла успешно{% endblock %}
+
+{% block content %}
+<h1>Оплата прошла успешно!</h1>
+<p>Списано: <strong>{{ total }} BYN</strong>.</p>
+{% if user.is_authenticated %}
+    <p>Заказы сохранены — смотрите <a href="{% url 'lab_5:profile' %}">личный кабинет</a>.</p>
+{% else %}
+    <p><a href="{% url 'lab_5:register' %}">Зарегистрируйтесь</a>, чтобы заказы сохранялись в личном кабинете.</p>
+{% endif %}
+<p><a href="{% url 'lab_5:home' %}">На главную</a></p>
+{% endblock %}

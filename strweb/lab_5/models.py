@@ -152,6 +152,10 @@ class CompanyInfo(models.Model):
     text_content = models.TextField(verbose_name="Текст о компании")
     logo = models.ImageField(upload_to='company/', blank=True, null=True, verbose_name="Логотип (необязательно)")
     history_years = models.TextField(blank=True, verbose_name="История по годам")
+    requisites = models.TextField(blank=True, default="", verbose_name="Реквизиты компании")
+    certificate_text = models.TextField(blank=True, default="", verbose_name="Сертификат (текст)")
+    video = models.FileField(upload_to='company/', blank=True, null=True, verbose_name="Видео о компании (файл)")
+    video_url = models.URLField(blank=True, default="", verbose_name="Видео о компании (URL)")
 
     class Meta:
         verbose_name = "Информация о компании"
@@ -254,3 +258,17 @@ class PromoCode(models.Model):
     def __str__(self):
         status = "Архивный" if self.is_archived else "Активный"
         return f"{self.code} (-{self.discount_amount}%) [{status}]"
+
+
+class Partner(models.Model):
+    """Компании-партнеры (для главной страницы)"""
+    name = models.CharField(max_length=100, verbose_name="Название компании")
+    website_url = models.URLField(verbose_name="Сайт компании")
+    logo = models.ImageField(upload_to='partners/', blank=True, null=True, verbose_name="Логотип")
+
+    class Meta:
+        verbose_name = "Партнер"
+        verbose_name_plural = "Компании-партнеры"
+
+    def __str__(self):
+        return self.name

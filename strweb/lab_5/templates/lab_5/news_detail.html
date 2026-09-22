@@ -1,0 +1,16 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}{{ article.title }} — Новости{% endblock %}
+
+{% block content %}
+<article>
+    <h1>{{ article.title }}</h1>
+    <p><strong>Кратко:</strong> {{ article.short_description }}</p>
+    {% if article.image %}
+        <img src="{{ article.image.url }}" alt="{{ article.title }}" width="400" loading="lazy">
+    {% endif %}
+    <p>{{ article.content|linebreaks }}</p>
+    <small>Опубликовано: {{ article.published_at|date:"d/m/Y H:i" }}</small>
+</article>
+<p><a href="{% url 'lab_5:news' %}">← Все новости</a></p>
+{% endblock %}

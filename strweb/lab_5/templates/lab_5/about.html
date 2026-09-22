@@ -7,11 +7,38 @@
 
 {% if company_info %}
     <h2>{{ company_info.title }}</h2>
+    {% if company_info.logo %}
+        <p><img src="{{ company_info.logo.url }}" alt="Логотип компании" width="200" loading="lazy"></p>
+    {% endif %}
     <p>{{ company_info.text_content }}</p>
-    
+
+    {% if company_info.video %}
+        <h3>Видео о компании</h3>
+        <video controls width="480" preload="none">
+            <source src="{{ company_info.video.url }}" type="video/mp4">
+            Ваш браузер не поддерживает видео.
+        </video>
+    {% elif company_info.video_url %}
+        <h3>Видео о компании</h3>
+        <video controls width="480" preload="none">
+            <source src="{{ company_info.video_url }}" type="video/mp4">
+            Ваш браузер не поддерживает видео.
+        </video>
+    {% endif %}
+
     {% if company_info.history_years %}
         <h3>Наша история по годам:</h3>
-        <p>{{ company_info.history_years }}</p>
+        <p>{{ company_info.history_years|linebreaks }}</p>
+    {% endif %}
+
+    {% if company_info.requisites %}
+        <h3>Реквизиты:</h3>
+        <p>{{ company_info.requisites|linebreaks }}</p>
+    {% endif %}
+
+    {% if company_info.certificate_text %}
+        <h3>Сертификат:</h3>
+        <blockquote>{{ company_info.certificate_text|linebreaks }}</blockquote>
     {% endif %}
 {% else %}
     <p>Информация о компании пока не заполнена в базе данных. Добавьте её через панель администратора в таблицу Company Info.</p>

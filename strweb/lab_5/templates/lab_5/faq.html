@@ -6,9 +6,11 @@
 <h1>Словарь терминов и часто задаваемые вопросы</h1>
 
 {% for item in faqs %}
-    <h3>❓ {{ item.question }}</h3>
-    <p>❗ {{ item.answer }}</p>
-    <small>Добавлено: {{ item.created_at|date:"d/m/Y" }}</small>
+    <details>
+        <summary><strong>{{ item.question }}</strong> <small>({{ item.created_at|date:"d/m/Y" }})</small></summary>
+        <p>{{ item.answer }}</p>
+        <small>Добавлено: {{ item.created_at|date:"d/m/Y H:i" }}</small>
+    </details>
     <hr>
 {% empty %}
     <p>Словарь терминов пока пуст. Добавьте записи в админке.</p>

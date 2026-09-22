@@ -21,4 +21,13 @@ urlpatterns = [
     path('faq/', views.faq_view, name='faq'),
     path('privacy/', views.privacy_view, name='privacy'),
     path('news/', views.news_view, name='news'),
+    path('news/<int:news_id>/', views.news_detail_view, name='news_detail'),
+    path('cars/<int:car_id>/', views.car_detail_view, name='car_detail'),
+    path('cart/', views.cart_view, name='cart'),
+    path('cart/add/<int:car_id>/', views.cart_add_view, name='cart_add'),
+    path('cart/update/<int:car_id>/', views.cart_update_view, name='cart_update'),
+    path('cart/remove/<int:car_id>/', views.cart_remove_view, name='cart_remove'),
+    path('checkout/', views.checkout_view, name='checkout'),
+    path('promocodes/', views.promocodes_view, name='promocodes'),
+    path('lr1/', views.lr1_demo_view, name='lr1_demo'),
 ]

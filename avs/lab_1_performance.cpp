@@ -32,75 +32,55 @@ int main() {
         asm volatile (
             ".intel_syntax noprefix\n\t"
 
-            // =========================================================
-            // ЧАСТЬ 1: Обработка элементов 0..3 (младшая четверка)
-            // =========================================================
+            "movq      mm0, [%[B]]\n\t"      
+            "pxor      mm1, mm1\n\t"           
+            "pcmpgtb   mm1, mm0\n\t"         
+            "movq      mm2, mm0\n\t"        
+            "punpcklbw mm2, mm1\n\t"          
 
-            // 1. Расширяем B[0..3] с 8 бит до 16 бит
-            "movq      mm0, [%[B]]\n\t"        // mm0 = B[7]..B[0]
-            "pxor      mm1, mm1\n\t"           // mm1 = 0
-            "pcmpgtb   mm1, mm0\n\t"           // mm1 = знаковые байты B (0xFF для <0, иначе 0x00)
-            "movq      mm2, mm0\n\t"           // Копируем B
-            "punpcklbw mm2, mm1\n\t"           // mm2 = B[0..3] (16-битные знаковые)
+            "movq      mm0, [%[C]]\n\t"       
+            "pxor      mm1, mm1\n\t"           
+            "pcmpgtb   mm1, mm0\n\t"           
+            "movq      mm3, mm0\n\t"           
+            "punpcklbw mm3, mm1\n\t"          
 
-            // 2. Расширяем C[0..3] с 8 бит до 16 бит
-            "movq      mm0, [%[C]]\n\t"        // mm0 = C[7]..C[0]
-            "pxor      mm1, mm1\n\t"           // mm1 = 0
-            "pcmpgtb   mm1, mm0\n\t"           // mm1 = знаковые байты C
-            "movq      mm3, mm0\n\t"           // Копируем C
-            "punpcklbw mm3, mm1\n\t"           // mm3 = C[0..3] (16-битные знаковые)
+        
+            "pmullw    mm2, mm3\n\t"          
 
-            // 3. Умножение B[0..3] * C[0..3]
-            "pmullw    mm2, mm3\n\t"           // mm2 = B[i] * C[i]
+            "movq      mm0, [%[A]]\n\t"        
+            "pxor      mm1, mm1\n\t"          
+            "pcmpgtb   mm1, mm0\n\t"          
+            "punpcklbw mm0, mm1\n\t"   
 
-            // 4. Расширяем A[0..3] с 8 бит до 16 бит
-            "movq      mm0, [%[A]]\n\t"        // mm0 = A[7]..A[0]
-            "pxor      mm1, mm1\n\t"           // mm1 = 0
-            "pcmpgtb   mm1, mm0\n\t"           // mm1 = знаковые байты A
-            "punpcklbw mm0, mm1\n\t"           // mm0 = A[0..3] (16-битные знаковые)
+            "paddw     mm2, mm0\n\t"         
+            "movq      mm4, [%[D]]\n\t"       
+            "psubw     mm2, mm4\n\t"       
 
-            // 5. Вычисляем A[i] + (B[i] * C[i]) - D[i]
-            "paddw     mm2, mm0\n\t"           // mm2 = (B * C) + A
-            "movq      mm4, [%[D]]\n\t"        // mm4 = D[0..3]
-            "psubw     mm2, mm4\n\t"           // mm2 = (B * C + A) - D
-
-            // 6. Сохраняем результат для элементов 0..3
             "movq      [%[F]], mm2\n\t"
 
-            // =========================================================
-            // ЧАСТЬ 2: Обработка элементов 4..7 (старшая четверка)
-            // =========================================================
-
-            // 1. Расширяем B[4..7] до 16 бит
             "movq      mm0, [%[B]]\n\t"
             "pxor      mm1, mm1\n\t"
             "pcmpgtb   mm1, mm0\n\t"
-            "punpckhbw mm0, mm1\n\t"           // mm0 = B[4..7] (16-битные знаковые)
+            "punpckhbw mm0, mm1\n\t"         
 
-            // 2. Расширяем C[4..7] до 16 бит
             "movq      mm2, [%[C]]\n\t"
             "pxor      mm1, mm1\n\t"
             "pcmpgtb   mm1, mm2\n\t"
-            "punpckhbw mm2, mm1\n\t"           // mm2 = C[4..7] (16-битные знаковые)
+            "punpckhbw mm2, mm1\n\t"      
 
-            // 3. Умножение B[4..7] * C[4..7]
-            "pmullw    mm0, mm2\n\t"           // mm0 = B[i] * C[i]
+            "pmullw    mm0, mm2\n\t"         
 
-            // 4. Расширяем A[4..7] до 16 бит
             "movq      mm3, [%[A]]\n\t"
             "pxor      mm1, mm1\n\t"
             "pcmpgtb   mm1, mm3\n\t"
-            "punpckhbw mm3, mm1\n\t"           // mm3 = A[4..7] (16-битные знаковые)
+            "punpckhbw mm3, mm1\n\t"          
 
-            // 5. Вычисляем A[i] + (B[i] * C[i]) - D[i]
-            "paddw     mm0, mm3\n\t"           // mm0 = (B * C) + A
-            "movq      mm4, [%[D] + 8]\n\t"    // mm4 = D[4..7] (смещение 8 байт)
-            "psubw     mm0, mm4\n\t"           // mm0 = (B * C + A) - D
+            "paddw     mm0, mm3\n\t"      
+            "movq      mm4, [%[D] + 8]\n\t"   
+            "psubw     mm0, mm4\n\t"          
 
-            // 6. Сохраняем результат для элементов 4..7
             "movq      [%[F] + 8], mm0\n\t"
 
-            // Очистка состояния MMX
             "emms\n\t"
             ".att_syntax\n\t"
             :

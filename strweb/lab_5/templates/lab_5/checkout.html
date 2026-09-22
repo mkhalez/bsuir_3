@@ -1,0 +1,25 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Оплата товаров{% endblock %}
+
+{% block content %}
+<h1>Страница оплаты</h1>
+
+{% if items %}
+    <ul>
+        {% for it in items %}
+            <li>{{ it.car.brand }} {{ it.car.model_name }} — {{ it.days }} сут. = {{ it.cost }} BYN</li>
+        {% endfor %}
+    </ul>
+    <p><strong>К оплате: {{ total }} BYN</strong></p>
+    <form method="post">
+        {% csrf_token %}
+        <p><label>Номер карты: <input type="text" name="card" required pattern="\d{4} \d{4} \d{4} \d{4}" placeholder="1111 2222 3333 4444"></label></p>
+        <p><label>Срок: <input type="month" name="exp" required></label></p>
+        <p><label>CVC: <input type="password" name="cvc" required pattern="\d{3}" maxlength="3" placeholder="123"></label></p>
+        <button type="submit">Подтвердить оплату</button>
+    </form>
+{% else %}
+    <p>Нечего оплачивать — корзина пуста.</p>
+{% endif %}
+{% endblock %}

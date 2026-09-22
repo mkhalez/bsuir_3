@@ -1,0 +1,20 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}{{ car.brand }} {{ car.model_name }} — Прокат авто{% endblock %}
+
+{% block content %}
+<h1>{{ car.brand }} {{ car.model_name }}</h1>
+<p>Год выпуска: {{ car.year }} | Категория: {{ car.car_type.name }}</p>
+<p>Гос. номер: <code>{{ car.license_plate }}</code></p>
+<p>Рыночная стоимость: {{ car.market_value }} BYN</p>
+<p>Суточная стоимость проката: <strong>{{ car.rental_price_per_day }} BYN</strong></p>
+
+<form method="post" action="{% url 'lab_5:cart_add' car.id %}">
+    {% csrf_token %}
+    <label for="days">Суток (1–30):</label>
+    <input type="number" id="days" name="days" value="1" min="1" max="30" required>
+    <button type="submit">Добавить в корзину</button>
+</form>
+
+<p><a href="{% url 'lab_5:cars_list' %}">← Назад в каталог</a> | <a href="{% url 'lab_5:cart' %}">Перейти в корзину</a></p>
+{% endblock %}

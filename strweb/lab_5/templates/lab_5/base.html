@@ -2,7 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Прокат автомобилей в Минске — автопарк, новости, отзывы, вакансии.">
+    <meta name="keywords" content="прокат авто, аренда авто Минск, car rental">
+    <meta name="author" content="Прокат авто">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%234e73df'/%3E%3Ctext x='32' y='42' font-size='32' text-anchor='middle' fill='white' font-family='sans-serif'%3EA%3C/text%3E%3C/svg%3E" type="image/svg+xml">
     <title>{% block title %}Прокат авто{% endblock %}</title>
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <header>
@@ -18,6 +24,10 @@
             <a href="{% url 'lab_5:vacancies' %}">Вакансии</a> |
             <a href="{% url 'lab_5:faq' %}">FAQ</a> |
             <a href="{% url 'lab_5:news' %}">Новости</a> |
+            <a href="{% url 'lab_5:cart' %}">Корзина</a> |
+            <a href="{% url 'lab_5:promocodes' %}">Промокоды</a> |
+            <a href="{% url 'lab_5:privacy' %}">Конфиденциальность</a> |
+            <a href="{% url 'lab_5:lr1_demo' %}">ЛР1 HTML-демо</a> |
             
             <span style="float: right;">
                 {% if user.is_authenticated %}

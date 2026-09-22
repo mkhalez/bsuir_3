@@ -11,10 +11,10 @@
         <p><strong>Кратко:</strong> {{ news.short_description }}</p>
 
         {% if news.image %}
-            <img src="{{ news.image.url }}" alt="{{ news.title }}" width="300">
+            <img src="{{ news.image.url }}" alt="{{ news.title }}" width="300" loading="lazy">
         {% endif %}
 
-        <p>{{ news.content }}</p>
+        <p><a href="{% url 'lab_5:news_detail' news.id %}">Читать далее</a></p>
         <small>Опубликовано: {{ news.published_at|date:"d/m/Y H:i" }}</small>
     </article>
     <hr>

@@ -1,0 +1,31 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}Корзина заказа{% endblock %}
+
+{% block content %}
+<h1>Корзина заказа</h1>
+
+{% if items %}
+    <ul>
+        {% for it in items %}
+            <li>
+                <strong>{{ it.car.brand }} {{ it.car.model_name }}</strong> —
+                {{ it.days }} сут. × {{ it.car.rental_price_per_day }} BYN = <strong>{{ it.cost }} BYN</strong>
+                <form method="post" action="{% url 'lab_5:cart_update' it.car.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" name="action" value="dec">− Уменьшить</button>
+                    <button type="submit" name="action" value="inc">+ Увеличить</button>
+                </form>
+                <form method="post" action="{% url 'lab_5:cart_remove' it.car.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit">Удалить из корзины</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+    <p><strong>Итого: {{ total }} BYN</strong></p>
+    <p><a href="{% url 'lab_5:checkout' %}"><button type="button">Оплатить</button></a></p>
+{% else %}
+    <p>Корзина пуста. <a href="{% url 'lab_5:cars_list' %}">Выбрать автомобиль</a></p>
+{% endif %}
+{% endblock %}

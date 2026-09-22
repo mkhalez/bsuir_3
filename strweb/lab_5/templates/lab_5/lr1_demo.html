@@ -1,0 +1,294 @@
+{% extends 'lab_5/base.html' %}
+
+{% block title %}ЛР1 HTML-демо — Прокат авто{% endblock %}
+
+{% block extra_head %}
+<meta name="description" content="Демо-страница ЛР1 СТРВП: семантическая верстка, таблицы, формы, медиа на примере проката авто.">
+<meta name="keywords" content="ЛР1, HTML, семантическая верстка, прокат авто, таблицы, формы">
+<meta name="author" content="Прокат авто — ЛР1">
+<meta property="og:title" content="ЛР1 HTML-демо — Прокат авто">
+<meta property="og:description" content="Одна страница со всеми требуемыми HTML-элементами: текст, ссылки, списки, таблица, форма, медиа.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#4e73df">
+{% endblock %}
+
+{% block content %}
+<div id="top" itemscope itemtype="https://schema.org/CarRental" data-page="lr1-demo">
+  <meta itemprop="name" content="Прокат авто — ЛР1 демо">
+  <meta itemprop="address" content="Минск">
+
+  <header>
+    <h1 id="page-title" class="demo-title" title="Демонстрационная страница ЛР1">ЛР1: HTML-демо <span style="color:#4e73df;">на одной странице</span></h1>
+    <p>Маршрут: <code>/lr1/</code> · шаблон <code>lab_5/lr1_demo.html</code> · вью <code>lr1_demo_view</code></p>
+    <!-- Горизонтальная навигация (якоря по странице) -->
+    <nav aria-label="Горизонтальная навигация по демо-странице">
+      <a href="#text" accesskey="1" title="Перейти к тексту (Alt+1)">Текст</a> |
+      <a href="#links" title="Ссылки и якоря">Ссылки</a> |
+      <a href="#lists" title="Списки и фигуры">Списки</a> |
+      <a href="#table" title="Таблица тарифов">Таблица</a> |
+      <a href="#form" title="Форма заявки">Форма</a> |
+      <a href="#media" title="Медиа и iframe">Медиа</a> |
+      <a href="{% url 'lab_5:home' %}">На главную сайта</a>
+    </nav>
+    <hr>
+  </header>
+
+  <div>
+    <!-- Вертикальная навигация в сайдбаре -->
+    <aside aria-label="Боковая панель">
+      <nav aria-label="Вертикальная навигация">
+        <p><strong>Разделы:</strong></p>
+        <ul>
+          <li><a href="#text">1. Текст и семантика</a></li>
+          <li><a href="#code">2. Листинг и код</a></li>
+          <li><a href="#links">3. Ссылки и якоря</a></li>
+          <li><a href="#lists">4. Списки и фигуры</a></li>
+          <li><a href="#table">5. Таблица</a></li>
+          <li><a href="#form">6. Форма</a></li>
+          <li><a href="#media">7. Медиа и iframe</a></li>
+        </ul>
+      </nav>
+      <details>
+        <summary>Что покрывает страница?</summary>
+        <p>Микро/мета-данные, favicon, семантические секции, выделение текста, листинги, сокращения, определения, цитаты, <code>time</code>, стих, ссылки, якоря, списки, фигуры, две навигации, таблица с <code>headers</code>, форма с валидацией, <code>iframe</code>, картинки (в т.ч. адаптивные), видео и аудио.</p>
+      </details>
+    </aside>
+
+    <main>
+      <section id="text" aria-labelledby="text-h">
+        <h2 id="text-h">1. Семантическое выделение текста и глобальные атрибуты</h2>
+        <article>
+          <h3>Абзацы и строчные элементы</h3>
+          <p><strong>Важно:</strong> это <em>семантическое</em> выделение, а это — <b>визуально жирное</b> и <i>визуально курсивное</i> для сравнения.</p>
+          <p>Аренда от <s>100 BYN</s> <mark>50 BYN/сутки</mark> <small>(плюс налоги)</small>. Формула: H<sub>2</sub>O и E=mc<sup>2</sup>. <u>Подчеркнутое условие договора</u>.</p>
+          <p lang="en" title="Атрибуты lang + title" translate="no">Quote in English with <span class="hl" dir="ltr">explicit dir="ltr"</span>.</p>
+          <p>Фрагмент с <span title="Глобальный атрибут title" tabindex="0" draggable="true" data-role="hint" data-price-byn="50">title, tabindex, draggable, data-*</span>,
+            <span contenteditable="true" spellcheck="true">редактируемый текст (contenteditable + spellcheck — можно печатать)</span>.</p>
+          <p hidden id="hidden-note">Этот абзац скрыт через hidden (проверка глобального атрибута).</p>
+        </article>
+
+        <article>
+          <h3>Сокращения, определения, цитаты, дата-время</h3>
+          <p>Клиент заключает договор с <abbr title="Общество с ограниченной ответственностью">ООО</abbr> «ПрокатАвто».</p>
+          <p><dfn title="Прокат — временное пользование автомобилем за плату">Прокат</dfn> оформляется по паспорту и водительскому удостоверению.</p>
+          <p>Термин через вложенное сокращение: <dfn><abbr title="Технический паспорт">техпаспорт</abbr></dfn> — документ с VIN-кодом автомобиля.</p>
+          <blockquote cite="https://developer.mozilla.org/ru/docs/Learn/HTML">
+            <p>«Разумные люди приспосабливаются к окружающему миру».</p>
+            <footer>— <cite>Бернард Шоу</cite></footer>
+          </blockquote>
+          <p>Короткая цитата: <q cite="https://ru.wikipedia.org/wiki/Прокат" lang="ru">Прокат — передача имущества во временное пользование</q> (<cite>Википедия</cite>).</p>
+          <p>Акция действует с <time datetime="2026-09-22">22 сентября 2026</time> до <time datetime="2026-12-31T23:59">31 декабря 2026, 23:59</time>. Выдача авто ежедневно в <time datetime="09:00">9:00</time>.</p>
+        </article>
+
+        <article>
+          <h3>Четверостишие: фиксированный и потенциальный переводы строки</h3>
+          <p>Фиксированный перевод (<code>br</code>):</p>
+          <p>Колесо гудит, дорога вдаль зовёт,<br>Минск остался за спиной в огнях,<br>Арендный седан уверенно идёт —<br>И ночь летит на четырёх колёсах.</p>
+          <p>Потенциальный перевод (<code>wbr</code> — перенос только при нехватке ширины):</p>
+          <p>Самый длинный страховой термин: авто<wbr>гражданская<wbr>ответственность<wbr>арендатора.</p>
+          <p>Преформатированный стих (<code>pre</code> — пробелы и строки как есть):</p>
+          <pre>Утро.   Ключи.  Договор.
+    Подпись — и машина ваша
+        до конца недели.</pre>
+        </article>
+      </section>
+
+      <section id="code" aria-labelledby="code-h">
+        <h2 id="code-h">2. Листинг программы</h2>
+        <figure>
+          <figcaption>Листинг 1. Расчёт стоимости проката (фрагмент)</figcaption>
+          <pre><code>base = float(car.rental_price_per_day)
+if car.year &gt;= 2025:
+    base *= 1.25
+total = round(base * days, 2)</code></pre>
+        </figure>
+        <p>Переменная <var>days</var>, вывод программы <samp>Итого: 250.00 BYN</samp>, нажмите <kbd>Enter</kbd> для подтверждения.</p>
+      </section>
+
+      <section id="links" aria-labelledby="links-h">
+        <h2 id="links-h">3. Ссылки разного вида и якоря</h2>
+        <ul>
+          <li>Внешняя (новое окно): <a href="https://developer.mozilla.org/ru/docs/Learn/HTML" target="_blank" rel="noopener nofollow" hreflang="ru" type="text/html">MDN: HTML</a></li>
+          <li>Внутренняя: <a href="{% url 'lab_5:cars_list' %}">Наш автопарк</a>, <a href="{% url 'lab_5:news' %}">Новости</a></li>
+          <li>Почта: <a href="mailto:info@prokat.example?subject=Вопрос%20о%20прокате">info@prokat.example</a></li>
+          <li>Телефон: <a href="tel:+375291234567">+375 (29) 123-45-67</a></li>
+          <li>Скачивание: <a href="/media/lr1/price-list.txt" download="price-list.txt">Скачать прайс-лист (.txt)</a></li>
+          <li>Якорь: <a href="#table">перейти к таблице тарифов ↓</a>, <a href="#top">наверх ↑</a></li>
+          <li>Картинка-ссылка: <a href="{% url 'lab_5:cars_list' %}" title="Перейти в автопарк"><img src="/media/news/Screenshot_from_2025-08-20_18-02-39.png" alt="Логотип-баннер автопарка" width="120" height="60"></a></li>
+        </ul>
+        <p id="anchor-target"><a id="n1"></a>Якорь <code>#n1</code>: сюда ведёт ссылка-примечание.</p>
+        <p><a href="#n1">См. примечание (якорь n1)</a></p>
+        <address>Контакты: г. Минск, ул. Гикало, 9 · <a href="mailto:info@prokat.example">info@prokat.example</a> · <a href="tel:+375291234567">+375 29 123-45-67</a></address>
+      </section>
+
+      <section id="lists" aria-labelledby="lists-h">
+        <h2 id="lists-h">4. Списки, определения, фигуры</h2>
+        <h3>Маркированный и нумерованный</h3>
+        <ul>
+          <li>Седан</li>
+          <li>Электромобиль
+            <ul>
+              <li>Tesla Model S</li>
+              <li>Geely Emgrand</li>
+            </ul>
+          </li>
+          <li>Внедорожник</li>
+        </ul>
+        <ol start="3" reversed>
+          <li value="10">Оформление договора</li>
+          <li>Оплата</li>
+          <li>Выдача ключей</li>
+        </ol>
+        <h3>Список определений</h3>
+        <dl>
+          <dt>Аренда</dt>
+          <dd>Временное пользование автомобилем за суточную плату.</dd>
+          <dt>Залог</dt>
+          <dd>Возвратная сумма, блокируемая на карте клиента.</dd>
+        </dl>
+        <h3>Фигуры</h3>
+        <figure>
+          <img src="/media/employees/Screenshot_from_2025-09-19_21-13-03.png" alt="Фото офиса проката" width="320" height="180">
+          <figcaption>Рис. 1. Офис выдачи автомобилей</figcaption>
+        </figure>
+        <figure id="adaptive-img" style="max-width: 800px; margin: 0;">
+          <figcaption>Рис. 2. Адаптивное изображение — сузьте окно до ≤600px: красный «MOBILE» сменится синим «DESKTOP» (и наоборот)</figcaption>
+          <picture>
+            <!-- Узкое окно: красный баннер MOBILE -->
+            <source media="(max-width: 600px)" srcset="/media/lr1/banner_mobile.svg" type="image/svg+xml">
+            <!-- Широкое окно: синий баннер DESKTOP -->
+            <source media="(min-width: 601px)" srcset="/media/lr1/banner_desktop.svg" type="image/svg+xml">
+            <img src="/media/lr1/banner_desktop.svg" srcset="/media/lr1/banner_mobile.svg 480w, /media/lr1/banner_desktop.svg 800w" sizes="(max-width: 600px) 100vw, 50vw" alt="Адаптивный баннер: красный MOBILE на узком экране, синий DESKTOP на широком" width="800" height="400" loading="lazy" style="width: 100%; max-width: 100%; height: auto; display: block; border: 2px solid #333;">
+          </picture>
+        </figure>
+      </section>
+
+      <section id="table" aria-labelledby="table-h">
+        <h2 id="table-h">5. Таблица тарифов (только для данных)</h2>
+        <table border="1">
+          <caption>Тарифы проката по категориям, BYN/сутки</caption>
+          <colgroup>
+            <col span="1">
+            <col span="2">
+          </colgroup>
+          <thead>
+            <tr>
+              <th id="th-cat" scope="col">Категория</th>
+              <th id="th-econ" scope="col">Эконом</th>
+              <th id="th-comf" scope="col">Комфорт</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th id="row-sedan" scope="row" headers="th-cat">Седан</th>
+              <td headers="th-econ row-sedan">50</td>
+              <td headers="th-comf row-sedan">80</td>
+            </tr>
+            <tr>
+              <th id="row-electro" scope="row" headers="th-cat" rowspan="2">Электро</th>
+              <td headers="th-econ row-electro">120</td>
+              <td headers="th-comf row-electro">150</td>
+            </tr>
+            <tr>
+              <td headers="th-econ row-electro" colspan="2">Акция: скидка 10% при аренде от 7 суток</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Среднее</th>
+              <td>85</td>
+              <td>115</td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+
+      <section id="form" aria-labelledby="form-h">
+        <h2 id="form-h">6. Форма заявки (с валидацией)</h2>
+        <form action="#form" method="get">
+          <fieldset>
+            <legend>Контакты</legend>
+            <p><label for="f-name">Имя (мин. 2 буквы):</label>
+              <input type="text" id="f-name" name="name" required minlength="2" maxlength="50" placeholder="Иван" autocomplete="given-name"></p>
+            <p><label for="f-email">Email:</label>
+              <input type="email" id="f-email" name="email" required placeholder="ivan@example.com" autocomplete="email"></p>
+            <p><label for="f-phone">Телефон:</label>
+              <input type="tel" id="f-phone" name="phone" required pattern="\+375 \((29|33|44|25)\) \d{3}-\d{2}-\d{2}" placeholder="+375 (29) 123-45-67" title="Формат +375 (29) 123-45-67"></p>
+          </fieldset>
+          <fieldset>
+            <legend>Параметры аренды</legend>
+            <p><label for="f-date">Дата выдачи:</label>
+              <input type="date" id="f-date" name="date" required></p>
+            <p><label for="f-days">Суток (1–30):</label>
+              <input type="number" id="f-days" name="days" required min="1" max="30" value="3"></p>
+            <p><label for="f-range">Бюджет/сутки (BYN):</label>
+              <input type="range" id="f-range" name="budget" min="50" max="300" step="10" value="100" oninput="document.getElementById('range-val').textContent=this.value">
+              <output id="range-val" for="f-range">100</output></p>
+            <p><label for="f-color">Цвет авто (пожелание):</label>
+              <input type="color" id="f-color" name="color" value="#4e73df"></p>
+            <p><label for="f-file">Водительское удостоверение (файл):</label>
+              <input type="file" id="f-file" name="license" accept=".jpg,.jpeg,.png,.pdf"></p>
+            <p>Категория:</p>
+            <p>
+              <input type="radio" id="r1" name="cat" value="sedan" checked> <label for="r1">Седан</label>
+              <input type="radio" id="r2" name="cat" value="electro"> <label for="r2">Электро</label>
+            </p>
+            <p>
+              <input type="checkbox" id="c1" name="extra" value="gps" checked> <label for="c1">GPS-навигатор</label>
+              <input type="checkbox" id="c2" name="extra" value="child"> <label for="c2">Детское кресло</label>
+            </p>
+            <p><label for="f-select">Пункт выдачи:</label>
+              <select id="f-select" name="point" required>
+                <option value="">— выберите —</option>
+                <optgroup label="Минск">
+                  <option value="gikalo" selected>ул. Гикало, 9</option>
+                  <option value="airport">Аэропорт</option>
+                </optgroup>
+                <optgroup label="Область">
+                  <option value="borisov">Борисов</option>
+                </optgroup>
+              </select></p>
+            <p><label for="f-text">Комментарий:</label><br>
+              <textarea id="f-text" name="comment" rows="3" cols="40" maxlength="500" placeholder="Детское кресло, второй водитель…" spellcheck="true"></textarea></p>
+          </fieldset>
+          <p>
+            <button type="submit">Отправить заявку</button>
+            <button type="reset">Сбросить</button>
+            <button type="button" onclick="document.getElementById('form-result').textContent='Демо: данные проверены браузером (required/pattern/min/max). Отправка на сервер не выполняется.'">Проверить</button>
+          </p>
+        </form>
+        <p id="form-result" aria-live="polite"></p>
+      </section>
+
+      <section id="media" aria-labelledby="media-h">
+        <h2 id="media-h">7. Изображения, iframe, видео, аудио</h2>
+        <h3>Обычное изображение</h3>
+        <p><img src="/media/news/Screenshot_from_2025-08-20_18-02-39.png" alt="Баннер акции проката" width="480" height="200" loading="lazy" title="Баннер: скидка за неделю"></p>
+        <h3>iframe (карта)</h3>
+        <iframe title="Карта: Минск, ул. Гикало 9" src="https://www.openstreetmap.org/export/embed.html?bbox=27.54%2C53.88%2C27.60%2C53.93&amp;layer=mapnik&amp;marker=53.905%2C27.57" width="480" height="300" loading="lazy"></iframe>
+        <p><a href="https://www.openstreetmap.org/?mlat=53.905&amp;mlon=27.57#map=15/53.905/27.57" target="_blank" rel="noopener">Открыть карту в новой вкладке</a></p>
+        <h3>Видео (нажмите Play; субтитры — кнопка CC)</h3>
+        <video controls width="480" preload="metadata" poster="/media/news/Screenshot_from_2025-08-20_18-02-39.png" style="width: 100%; max-width: 480px; height: auto;">
+          <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+          <track kind="subtitles" src="/media/lr1/subtitles_ru.vtt" srclang="ru" label="Русские" default>
+          <track kind="subtitles" src="/media/lr1/subtitles_en.vtt" srclang="en" label="English">
+          Ваш браузер не поддерживает видео. <a href="https://www.w3schools.com/html/mov_bbb.mp4">Скачать ролик (MP4)</a>
+        </video>
+        <h3>Аудио</h3>
+        <audio controls preload="none">
+          <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+          Ваш браузер не поддерживает аудио. <a href="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">Скачать аудио (MP3)</a>
+        </audio>
+      </section>
+
+      <p><a href="#top">↑ Наверх страницы</a></p>
+    </main>
+  </div>
+
+  <footer>
+    <hr>
+    <p>© <time datetime="2026">2026</time> Прокат авто · ЛР1 HTML-демо · <a href="{% url 'lab_5:privacy' %}">Политика конфиденциальности</a></p>
+  </footer>
+</div>
+{% endblock %}
