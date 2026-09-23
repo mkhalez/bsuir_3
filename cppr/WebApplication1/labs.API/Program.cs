@@ -2,17 +2,13 @@ using labs.API.Data;
 using labs.API.EndPoints;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using labs.Data;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<TempDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("TempDbContext") ?? throw new InvalidOperationException("Connection string 'TempDbContext' not found.")));
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// MediatR: ищет обработчики во всей сборке API
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 

@@ -12,26 +12,40 @@ public static class DbInitializer
 
         await context.Database.MigrateAsync();
 
-        if (await context.Categories.AnyAsync())
+        var apiUrl = app.Configuration["ApiUrl"] ?? "https://localhost:7002";
+        
+        var wrong = await context.Categories
+            .FirstOrDefaultAsync(c => c.NormalizedName == "maindishes");
+        if (wrong is not null)
+        {
+            wrong.NormalizedName = "main-dishes";
+        }
+        
+        var required = new (string Name, string NormalizedName)[]
+        {
+            ("Супы", "soups"),
+            ("Основные блюда", "main-dishes"),
+            ("Салаты", "salads"),
+            ("Напитки", "drinks"),
+            ("Стартеры", "starters"),
+            ("Десерты", "desserts"),
+        };
+        foreach (var (name, normalizedName) in required)
+        {
+            if (!await context.Categories.AnyAsync(c => c.NormalizedName == normalizedName))
+            {
+                context.Categories.Add(new Category { Name = name, NormalizedName = normalizedName });
+            }
+        }
+        await context.SaveChangesAsync();
+
+        if (await context.Dishes.AnyAsync())
         {
             return;
         }
 
-        var apiUrl = app.Configuration["ApiUrl"] ?? "https://localhost:7002";
-
-        var categories = new List<Category>
-        {
-            new() { Name = "Супы",          NormalizedName = "soups" },
-            new() { Name = "Основные блюда", NormalizedName = "maindishes" },
-            new() { Name = "Салаты",        NormalizedName = "salads" },
-            new() { Name = "Напитки",       NormalizedName = "drinks" }
-        };
-
-        await context.Categories.AddRangeAsync(categories);
-        await context.SaveChangesAsync();
-
         int Cat(string normalizedName) =>
-            categories.First(c => c.NormalizedName == normalizedName).Id;
+            context.Categories.First(c => c.NormalizedName == normalizedName).Id;
 
         var dishes = new List<Dish>
         {
@@ -60,7 +74,7 @@ public static class DbInitializer
                 Calories = 520,
                 Image = $"{apiUrl}/Images/Стейк.jpg",
                 MimeType = "image/jpeg",
-                CategoryId = Cat("maindishes")
+                CategoryId = Cat("main-dishes")
             },
             new()
             {

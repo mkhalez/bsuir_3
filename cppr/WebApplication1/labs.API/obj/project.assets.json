@@ -8965,6 +8965,7 @@
       },
       "frameworks": {
         "net8.0": {
+          "framework": "net8.0",
           "targetAlias": "net8.0",
           "projectReferences": {
             "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.Domain/labs.Domain.csproj": {
@@ -8981,6 +8982,7 @@
     },
     "frameworks": {
       "net8.0": {
+        "framework": "net8.0",
         "targetAlias": "net8.0",
         "dependencies": {
           "Aspire.Npgsql.EntityFrameworkCore.PostgreSQL": {

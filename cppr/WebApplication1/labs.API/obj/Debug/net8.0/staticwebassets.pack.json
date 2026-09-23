@@ -1,6 +1,14 @@
 {
   "Files": [
     {
+      "Id": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/7700017c-9299-4301-b879-b73a43022d95.webp",
+      "PackagePath": "staticwebassets/Images/7700017c-9299-4301-b879-b73a43022d95.webp"
+    },
+    {
+      "Id": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/f12d9eb1-9992-4541-8d1c-e7922d674c2e.png",
+      "PackagePath": "staticwebassets/Images/f12d9eb1-9992-4541-8d1c-e7922d674c2e.png"
+    },
+    {
       "Id": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/Борщ.jpg",
       "PackagePath": "staticwebassets/Images/Борщ.jpg"
     },

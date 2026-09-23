@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "3IoX1u/FbMji0RHIEmW4o7NrlF0BUb1q7dZxCIaWX/E=",
+  "Hash": "Jlp8vY0ffcDvYKMAWGx/5nfjzxr6/DKl2F/OENNi630=",
   "Source": "labs.API",
   "BasePath": "_content/labs.API",
   "Mode": "Default",
@@ -16,6 +16,44 @@
     }
   ],
   "Assets": [
+    {
+      "Identity": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/7700017c-9299-4301-b879-b73a43022d95.webp",
+      "SourceId": "labs.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/",
+      "BasePath": "_content/labs.API",
+      "RelativePath": "Images/7700017c-9299-4301-b879-b73a43022d95.webp",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/Images/7700017c-9299-4301-b879-b73a43022d95.webp"
+    },
+    {
+      "Identity": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/f12d9eb1-9992-4541-8d1c-e7922d674c2e.png",
+      "SourceId": "labs.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/",
+      "BasePath": "_content/labs.API",
+      "RelativePath": "Images/f12d9eb1-9992-4541-8d1c-e7922d674c2e.png",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/Images/f12d9eb1-9992-4541-8d1c-e7922d674c2e.png"
+    },
     {
       "Identity": "/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/wwwroot/Images/Борщ.jpg",
       "SourceId": "labs.API",

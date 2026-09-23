@@ -27,12 +27,4 @@
       <ProjectReference Include="../labs.Domain/labs.Domain.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <_ContentIncludedByDefault Remove="Areas\Admin\Pages\Dishes\Create.cshtml" />
-      <_ContentIncludedByDefault Remove="Areas\Admin\Pages\Dishes\Delete.cshtml" />
-      <_ContentIncludedByDefault Remove="Areas\Admin\Pages\Dishes\Details.cshtml" />
-      <_ContentIncludedByDefault Remove="Areas\Admin\Pages\Dishes\Edit.cshtml" />
-      <_ContentIncludedByDefault Remove="Areas\Admin\Pages\Dishes\Index.cshtml" />
-    </ItemGroup>
-
 </Project>

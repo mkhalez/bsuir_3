@@ -6,17 +6,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace labs.API.Use_Cases;
 
-// Запрос
 public sealed record GetListOfProducts(
     string? CategoryNormalizedName,
     int PageNo = 1,
     int PageSize = 3) : IRequest<ResponseData<ListModel<Dish>>>;
 
-// Обработчик
 public class GetListOfProductsHandler(AppDbContext db)
     : IRequestHandler<GetListOfProducts, ResponseData<ListModel<Dish>>>
 {
-    // максимальный размер страницы
     private readonly int _maxPageSize = 20;
 
     public async Task<ResponseData<ListModel<Dish>>> Handle(
@@ -25,15 +22,13 @@ public class GetListOfProductsHandler(AppDbContext db)
         var pageSize = Math.Clamp(request.PageSize, 1, _maxPageSize);
 
         IQueryable<Dish> query = db.Dishes.AsNoTracking();
-
-        // фильтр по категории
+        
         if (!string.IsNullOrEmpty(request.CategoryNormalizedName))
         {
             query = query.Where(d =>
                 d.Category!.NormalizedName == request.CategoryNormalizedName);
         }
-
-        // стабильный порядок для постраничной выборки
+        
         query = query.OrderBy(d => d.Id);
 
         var count = await query.CountAsync(cancellationToken);

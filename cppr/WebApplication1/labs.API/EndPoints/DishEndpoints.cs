@@ -15,8 +15,7 @@ public static class DishEndpoints
     {
         var group = routes.MapGroup("/api/Dish")
             .DisableAntiforgery();
-
-        // список с фильтром по категории и пагинацией
+        
         group.MapGet("/{category:alpha?}", async (
             IMediator mediator,
             string? category,
@@ -32,6 +31,7 @@ public static class DishEndpoints
         group.MapGet("/{id:int}", async Task<Results<Ok<Dish>, NotFound>> (int id, AppDbContext db) =>
         {
             return await db.Dishes.AsNoTracking()
+                .Include(model => model.Category)
                 .FirstOrDefaultAsync(model => model.Id == id)
                 is Dish model
                     ? TypedResults.Ok(model)
@@ -39,18 +39,36 @@ public static class DishEndpoints
         })
         .WithName("GetDishById");
 
-        group.MapPut("/{id:int}", async Task<Results<Ok, NotFound>> (int id, Dish dish, AppDbContext db) =>
+        group.MapPut("/{id:int}", async Task<IResult> (
+            int id,
+            [FromForm] string dish,
+            [FromForm] IFormFile? file,
+            AppDbContext db,
+            IMediator mediator,
+            IWebHostEnvironment env) =>
         {
-            var affected = await db.Dishes
-                .Where(model => model.Id == id)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(m => m.Name, dish.Name)
-                    .SetProperty(m => m.Description, dish.Description)
-                    .SetProperty(m => m.Calories, dish.Calories)
-                    .SetProperty(m => m.Image, dish.Image)
-                    .SetProperty(m => m.MimeType, dish.MimeType)
-                    .SetProperty(m => m.CategoryId, dish.CategoryId));
-            return affected == 1 ? TypedResults.Ok() : TypedResults.NotFound();
+            var existing = await db.Dishes.FindAsync(id);
+            if (existing is null)
+                return TypedResults.NotFound();
+
+            var updated = JsonSerializer.Deserialize<Dish>(dish);
+            if (updated is null)
+                return TypedResults.BadRequest("Некорректные данные блюда");
+            
+            if (file is not null)
+            {
+                DeleteImageFile(existing.Image, env);
+                existing.Image = await mediator.Send(new SaveImage(file));
+            }
+
+            existing.Name = updated.Name;
+            existing.Description = updated.Description;
+            existing.Calories = updated.Calories;
+            existing.MimeType = updated.MimeType;
+            existing.CategoryId = updated.CategoryId;
+
+            await db.SaveChangesAsync();
+            return TypedResults.Ok();
         })
         .WithName("UpdateDish");
 
@@ -77,13 +95,44 @@ public static class DishEndpoints
         })
         .WithName("CreateDish");
 
-        group.MapDelete("/{id:int}", async Task<Results<Ok, NotFound>> (int id, AppDbContext db) =>
+        group.MapDelete("/{id:int}", async Task<Results<Ok, NotFound>> (int id, AppDbContext db, IWebHostEnvironment env) =>
         {
-            var affected = await db.Dishes
-                .Where(model => model.Id == id)
-                .ExecuteDeleteAsync();
-            return affected == 1 ? TypedResults.Ok() : TypedResults.NotFound();
+            var existing = await db.Dishes.FindAsync(id);
+            if (existing is null)
+                return TypedResults.NotFound();
+            
+            DeleteImageFile(existing.Image, env);
+
+            db.Dishes.Remove(existing);
+            await db.SaveChangesAsync();
+            return TypedResults.Ok();
         })
         .WithName("DeleteDish");
+    }
+    
+    private static void DeleteImageFile(string? imageUrl, IWebHostEnvironment env)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            return;
+        try
+        {
+            var path = imageUrl.Contains("://")
+                ? new Uri(imageUrl).LocalPath
+                : imageUrl.Replace('/', Path.DirectorySeparatorChar);
+            var fileName = Path.GetFileName(path);
+            if (string.IsNullOrEmpty(fileName))
+                return;
+            var imagesFolder = Path.Combine(env.WebRootPath, "Images");
+            var fullPath = Path.GetFullPath(Path.Combine(imagesFolder, fileName));
+            // защита от выхода за пределы папки Images
+            if (!fullPath.StartsWith(Path.GetFullPath(imagesFolder)))
+                return;
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
+        catch
+        {
+            
+        }
     }
 }
