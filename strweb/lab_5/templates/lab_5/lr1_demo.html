@@ -23,7 +23,7 @@
     <p>Маршрут: <code>/lr1/</code> · шаблон <code>lab_5/lr1_demo.html</code> · вью <code>lr1_demo_view</code></p>
     <!-- Горизонтальная навигация (якоря по странице) -->
     <nav aria-label="Горизонтальная навигация по демо-странице">
-      <a href="#text" accesskey="1" title="Перейти к тексту (Alt+1)">Текст</a> |
+      <a href="#text" accesskey="t" title="Перейти к тексту (Alt+1)">Текст</a> |
       <a href="#links" title="Ссылки и якоря">Ссылки</a> |
       <a href="#lists" title="Списки и фигуры">Списки</a> |
       <a href="#table" title="Таблица тарифов">Таблица</a> |
@@ -155,9 +155,7 @@ total = round(base * days, 2)</code></pre>
         <figure id="adaptive-img" style="max-width: 800px; margin: 0;">
           <figcaption>Рис. 2. Адаптивное изображение — сузьте окно до ≤600px: красный «MOBILE» сменится синим «DESKTOP» (и наоборот)</figcaption>
           <picture>
-            <!-- Узкое окно: красный баннер MOBILE -->
             <source media="(max-width: 600px)" srcset="/media/lr1/banner_mobile.svg" type="image/svg+xml">
-            <!-- Широкое окно: синий баннер DESKTOP -->
             <source media="(min-width: 601px)" srcset="/media/lr1/banner_desktop.svg" type="image/svg+xml">
             <img src="/media/lr1/banner_desktop.svg" srcset="/media/lr1/banner_mobile.svg 480w, /media/lr1/banner_desktop.svg 800w" sizes="(max-width: 600px) 100vw, 50vw" alt="Адаптивный баннер: красный MOBILE на узком экране, синий DESKTOP на широком" width="800" height="400" loading="lazy" style="width: 100%; max-width: 100%; height: auto; display: block; border: 2px solid #333;">
           </picture>
