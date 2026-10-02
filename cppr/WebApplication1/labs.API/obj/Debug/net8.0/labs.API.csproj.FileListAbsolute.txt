@@ -286,3 +286,4 @@
 /home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/obj/Debug/net8.0/labs.API.pdb
 /home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/obj/Debug/net8.0/labs.API.genruntimeconfig.cache
 /home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/obj/Debug/net8.0/ref/labs.API.dll
+/home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1/labs.API/bin/Debug/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll

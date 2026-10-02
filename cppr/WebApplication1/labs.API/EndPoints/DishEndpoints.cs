@@ -14,7 +14,8 @@ public static class DishEndpoints
     public static void MapDishEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/Dish")
-            .DisableAntiforgery();
+            .DisableAntiforgery()
+            .RequireAuthorization("admin");
         
         group.MapGet("/{category:alpha?}", async (
             IMediator mediator,
@@ -26,7 +27,8 @@ public static class DishEndpoints
                 new GetListOfProducts(category, pageNo, pageSize));
             return TypedResults.Ok(data);
         })
-        .WithName("GetAllDishes");
+        .WithName("GetAllDishes")
+        .AllowAnonymous();;
 
         group.MapGet("/{id:int}", async Task<Results<Ok<Dish>, NotFound>> (int id, AppDbContext db) =>
         {
