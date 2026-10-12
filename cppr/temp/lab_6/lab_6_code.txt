@@ -1,0 +1,508 @@
+================================================================
+LAB 6. ВЕСЬ КОД, ДОБАВЛЕННЫЙ/ИЗМЕНЕННЫЙ В ХОДЕ ЛАБЫ
+UI = проект labs (https://localhost:7001), API = labs.API (https://localhost:7002)
+Keycloak: http://localhost:8080, Realm Mikhalko, Client MikhalkoUiClient
+================================================================
+
+==================== 1. compose.yaml — сервис keycloak ====================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.4
+    container_name: keycloak
+    command: start-dev
+    env_file:
+      - postgres.env
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    ports:
+      - "8080:8080"
+    networks:
+      - postgres_network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+==================== 2. postgres.env — админ keycloak ====================
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=123456
+POSTGRES_DB=postgres
+PGADMIN_DEFAULT_EMAIL=admin@example.com
+PGADMIN_DEFAULT_PASSWORD=123456
+KEYCLOAK_ADMIN=admin
+KEYCLOAK_ADMIN_PASSWORD=123456
+
+==================== 3. labs.API/labs.API.csproj — пакет ====================
+<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
+
+==================== 4. labs.API/appsettings.json — секция AuthServer ====================
+  "AuthServer": {
+    "Host": "http://localhost:8080",
+    "Realm": "Mikhalko"
+  }
+
+==================== 5. labs.API/Models/AuthServerData.cs — НОВЫЙ ====================
+namespace labs.API.Models;
+
+internal class AuthServerData
+{
+    public string Host { get; set; } = string.Empty;
+    public string Realm { get; set; } = string.Empty;
+}
+
+==================== 6. labs.API/Program.cs — JwtBearer + политика admin ====================
+using labs.API.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+
+var authServer = builder.Configuration
+    .GetSection("AuthServer")
+    .Get<AuthServerData>()!;
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+    {
+        o.MetadataAddress = $"{authServer.Host}/realms/{authServer.Realm}/.well-known/openid-configuration";
+        o.Authority = $"{authServer.Host}/realms/{authServer.Realm}";
+        o.Audience = "account";
+        o.RequireHttpsMetadata = false;
+        o.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = ctx =>
+            {
+                Console.WriteLine($"JWT FAILED: {ctx.Exception.GetType().Name}: {ctx.Exception.Message}");
+                return Task.CompletedTask;
+            },
+            OnChallenge = ctx =>
+            {
+                Console.WriteLine($"JWT CHALLENGE: {ctx.Error} | {ctx.ErrorDescription} | {ctx.AuthenticateFailure?.Message}");
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization(opt =>
+{
+    opt.AddPolicy("admin", p => p.RequireRole("POWER-USER"));
+});
+
+// ... после var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+
+==================== 7. labs.API/EndPoints/DishEndpoints.cs — защита группы ====================
+        var group = routes.MapGroup("/api/Dish")
+            .DisableAntiforgery()
+            .RequireAuthorization("admin");
+
+        group.MapGet("/{category:alpha?}", async (...) => { ... })
+            .WithName("GetAllDishes")
+            .AllowAnonymous();;   // чтение списка — анонимно, остальное — только admin
+        // MapGet("/{id:int}"), MapPost, MapPut, MapDelete — без AllowAnonymous (только admin)
+
+==================== 8. labs/labs.csproj — пакеты ====================
+<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
+<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.*" />
+
+==================== 9. labs/appsettings.json — секция Keycloak ====================
+  "Keycloak": {
+    "Host": "http://localhost:8080",
+    "Realm": "Mikhalko",
+    "ClientId": "MikhalkoUiClient",
+    "ClientSecret": "PZZ9yvU9sNRFkjEj46niGccP21YTt1T0"
+  }
+
+==================== 10. labs/HelperClasses/KeycloakData.cs — НОВЫЙ ====================
+namespace labs.HelperClasses;
+
+public class KeycloakData
+{
+    public string Host { get; set; } = string.Empty;
+    public string Realm { get; set; } = string.Empty;
+    public string ClientId { get; set; } = string.Empty;
+    public string ClientSecret { get; set; } = string.Empty;
+}
+
+==================== 11. labs/Program.cs — Cookie+OIDC + политика + защита Razor ====================
+using labs.Extensions;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using labs.HelperClasses;
+
+var keycloakData = builder.Configuration
+    .GetSection("Keycloak")
+    .Get<KeycloakData>()!;
+
+builder.Services.AddHttpContextAccessor();
+
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = "keycloak";
+    })
+    .AddCookie()
+    .AddOpenIdConnect("keycloak", options =>
+    {
+        options.Authority = $"{keycloakData.Host}/realms/{keycloakData.Realm}";
+        options.ClientId = keycloakData.ClientId;
+        options.ClientSecret = keycloakData.ClientSecret;
+        options.ResponseType = OpenIdConnectResponseType.Code;
+        options.Scope.Add("openid");
+        options.SaveTokens = true;
+        options.RequireHttpsMetadata = false;
+        options.MetadataAddress =
+            $"{keycloakData.Host}/realms/{keycloakData.Realm}/.well-known/openid-configuration";
+        options.UseTokenLifetime = true;
+    });
+
+builder.Services.AddAuthorization(opt =>
+    opt.AddPolicy("admin", p => p.RequireRole("POWER-USER")));
+
+// ... после var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapRazorPages().RequireAuthorization("admin");
+
+==================== 12. labs/Extensions/HostingExtensions.cs — DI ====================
+using labs.Controllers;
+using labs.Services.FileService;
+
+builder.Services.Configure<KeycloakData>(builder.Configuration.GetSection("Keycloak"));
+builder.Services.AddHttpClient<ITokenAccessor, KeycloakTokenAccessor>();
+
+builder.Services.AddScoped<IFileService, LocalFileService>();
+builder.Services.AddHttpClient<AccountController>();
+
+==================== 13. labs/Services/Authentication/ITokenAccessor.cs — НОВЫЙ ====================
+namespace labs.Services.Authentication;
+
+public interface ITokenAccessor
+{
+    Task SetAuthorizationHeaderAsync(HttpClient httpClient, bool isClient);
+}
+
+==================== 14. labs/Services/Authentication/KeycloakTokenAccessor.cs — НОВЫЙ ====================
+using System.Net.Http.Headers;
+using System.Security.Authentication;
+using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+using labs.HelperClasses;
+
+namespace labs.Services.Authentication;
+
+public class KeycloakTokenAccessor(
+    IHttpContextAccessor contextAccessor,
+    IOptions<KeycloakData> options,
+    HttpClient httpClient) : ITokenAccessor
+{
+    public async Task SetAuthorizationHeaderAsync(HttpClient httpClient, bool isClient)
+    {
+        string token = isClient
+            ? await GetClientToken()
+            : await GetUserToken();
+
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("bearer", token);
+    }
+
+    async Task<string> GetUserToken()
+    {
+        var context = contextAccessor.HttpContext
+            ?? throw new AuthenticationFailureException("Нет HttpContext");
+        var authSession = await context.AuthenticateAsync("keycloak");
+        if (authSession?.Principal == null)
+            throw new AuthenticationFailureException("Пользователь неавторизован");
+
+        return await context.GetTokenAsync("keycloak", "access_token")
+            ?? throw new AuthenticationFailureException("Нет access_token, проверь SaveTokens=true");
+    }
+
+    async Task<string> GetClientToken()
+    {
+        var requestUri =
+            $"{options.Value.Host}/realms/{options.Value.Realm}/protocol/openid-connect/token";
+
+        HttpContent content = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string,string>("client_id", options.Value.ClientId),
+            new KeyValuePair<string,string>("grant_type", "client_credentials"),
+            new KeyValuePair<string,string>("client_secret", options.Value.ClientSecret)
+        });
+
+        var response = await httpClient.PostAsync(requestUri, content);
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException(response.StatusCode.ToString());
+
+        var jsonString = await response.Content.ReadAsStringAsync();
+        return JsonObject.Parse(jsonString)!["access_token"]!.GetValue<string>();
+    }
+}
+
+==================== 15. labs/Services/ProductService/ApiProductService.cs — токен в запросах ====================
+// В GetProductListAsync: без токена идем анонимно
+try { await _tokenAccessor.SetAuthorizationHeaderAsync(_httpClient, false); }
+catch (Exception e)
+{
+    _logger.LogInformation("-----> Запрос списка без токена: {msg}", e.Message);
+    _httpClient.DefaultRequestHeaders.Authorization = null;
+}
+// В CreateProductAsync / GetProductByIdAsync:
+try { await _tokenAccessor.SetAuthorizationHeaderAsync(_httpClient, false); }
+catch (Exception e) { return ResponseData<Dish>.Error($"Объект не добавлен. Error: {e.Message}"); }
+// В UpdateProductAsync / DeleteProductAsync:
+try { await _tokenAccessor.SetAuthorizationHeaderAsync(_httpClient, false); }
+catch (Exception e) { _logger.LogError("-----> No token: {msg}", e.Message); return; }
+// + конструктор: ITokenAccessor tokenAccessor -> _tokenAccessor = tokenAccessor;
+
+==================== 16. labs/Services/FileService/IFileService.cs — НОВЫЙ ====================
+namespace labs.Services.FileService;
+
+public interface IFileService
+{
+    Task<string> SaveFileAsync(IFormFile file);
+}
+
+==================== 17. labs/Services/FileService/LocalFileService.cs — НОВЫЙ ====================
+namespace labs.Services.FileService;
+
+public class LocalFileService(IWebHostEnvironment environment) : IFileService
+{
+    public async Task<string> SaveFileAsync(IFormFile file)
+    {
+        var ext = Path.GetExtension(file.FileName);
+        var fileName = $"{Guid.NewGuid()}{ext}";
+
+        var imagesDir = Path.Combine(environment.WebRootPath, "images");
+        Directory.CreateDirectory(imagesDir);
+        var filePath = Path.Combine(imagesDir, fileName);
+
+        await using var stream = File.Create(filePath);
+        await file.CopyToAsync(stream);
+
+        return $"/images/{fileName}";
+    }
+}
+
+==================== 18. labs/Models/RegisterUserViewModel.cs — НОВЫЙ ====================
+using System.ComponentModel.DataAnnotations;
+
+namespace labs.Models;
+
+public class RegisterUserViewModel
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    [DataType(DataType.Password)]
+    public string Password { get; set; } = string.Empty;
+
+    [Required]
+    [Compare(nameof(Password))]
+    [DataType(DataType.Password)]
+    [Display(Name = "Confirm password")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+
+    public IFormFile? Avatar { get; set; }
+}
+
+==================== 19. labs/Controllers/AccountController.cs — НОВЫЙ ====================
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using labs.HelperClasses;
+using labs.Models;
+using labs.Services.Authentication;
+using labs.Services.FileService;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+
+namespace labs.Controllers;
+
+public class AccountController(
+    IHttpContextAccessor contextAccessor,
+    HttpClient httpClient,
+    ITokenAccessor tokenAccessor,
+    IOptions<KeycloakData> options,
+    IFileService fileService) : Controller
+{
+    // GET: /Account/Register
+    public IActionResult Register()
+    {
+        return View(new RegisterUserViewModel());
+    }
+
+    // POST: /Account/Register
+    [HttpPost]
+    [AutoValidateAntiforgeryToken]
+    public async Task<IActionResult> Register(RegisterUserViewModel user)
+    {
+        if (!ModelState.IsValid)
+            return View(user);
+
+        if (user == null)
+            return BadRequest();
+
+        try
+        {
+            await tokenAccessor.SetAuthorizationHeaderAsync(httpClient, true);
+        }
+        catch (Exception)
+        {
+            return Unauthorized();
+        }
+
+        var avatarUrl = "/images/default-profile-picture.png";
+        if (user.Avatar != null)
+        {
+            avatarUrl = await fileService.SaveFileAsync(user.Avatar);
+        }
+
+        var newUser = new CreateUserModel();
+        newUser.Attributes.Add("avatar", avatarUrl);
+        newUser.Email = user.Email;
+        newUser.Username = user.Email;
+        newUser.Credentials.Add(new UserCredentials { Value = user.Password });
+
+        var requestUri =
+            $"{options.Value.Host}/admin/realms/{options.Value.Realm}/users";
+
+        var serializerOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        var userData = JsonSerializer.Serialize(newUser, serializerOptions);
+        HttpContent content = new StringContent(userData, Encoding.UTF8, "application/json");
+
+        var response = await httpClient.PostAsync(requestUri, content);
+
+        if (response.IsSuccessStatusCode)
+            return Redirect(Url.Action("Index", "Home")!);
+        else
+            return BadRequest(response.StatusCode);
+    }
+
+    public async Task Login()
+    {
+        await HttpContext.ChallengeAsync(
+            "keycloak",
+            new AuthenticationProperties { RedirectUri = Url.Action("Index", "Home") });
+    }
+
+    [HttpPost]
+    public async Task Logout()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignOutAsync("keycloak",
+            new AuthenticationProperties { RedirectUri = Url.Action("Index", "Home") });
+    }
+}
+
+class UserCredentials
+{
+    public string Type { get; set; } = "password";
+    public bool Temporary { get; set; } = false;
+    public string Value { get; set; } = string.Empty;
+}
+
+class CreateUserModel
+{
+    public Dictionary<string, string> Attributes { get; set; } = new();
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = true;
+    public bool EmailVerified { get; set; } = true;
+    public List<UserCredentials> Credentials { get; set; } = new();
+}
+
+==================== 20. labs/Views/Account/Register.cshtml — НОВОЕ ====================
+@model labs.Models.RegisterUserViewModel
+@{
+    ViewData["Title"] = "Register";
+}
+<h2>Register</h2>
+<form asp-action="Register" method="post" enctype="multipart/form-data">
+    <div asp-validation-summary="ModelOnly"></div>
+    <div>
+        <label asp-for="Email"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email"></span>
+    </div>
+    <div>
+        <label asp-for="Password"></label>
+        <input asp-for="Password" class="form-control" />
+        <span asp-validation-for="Password"></span>
+    </div>
+    <div>
+        <label asp-for="ConfirmPassword"></label>
+        <input asp-for="ConfirmPassword" class="form-control" />
+        <span asp-validation-for="ConfirmPassword"></span>
+    </div>
+    <div>
+        <label asp-for="Avatar"></label>
+        <input asp-for="Avatar" type="file" class="form-control" accept="image/*" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">Register</button>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+==================== 21. labs/Views/Shared/_UserInfoPartial.cshtml — ПЕРЕПИСАНО ====================
+@{
+    var name = User.Claims
+        .FirstOrDefault(c => c.Type.Equals("preferred_username", StringComparison.OrdinalIgnoreCase))?.Value;
+    var avatar = User.Claims
+        .FirstOrDefault(c => c.Type.Equals("avatar", StringComparison.OrdinalIgnoreCase))?.Value;
+    if (string.IsNullOrEmpty(avatar)) { avatar = "/images/default-profile-picture.png"; }
+}
+@if (User.Identity?.IsAuthenticated ?? false)
+{
+    @await Component.InvokeAsync("Cart")
+    <div class="dropdown ms-4 nav-color">
+        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            @name
+            <img src="@avatar" width="30" class="rounded nav-color" />
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <span class="dropdown-item-text">
+                    <img src="@avatar" width="50" class="rounded" />
+                    @name
+                </span>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form class="form-inline" asp-controller="Account" asp-action="Logout" method="post">
+                    <button type="submit" class="dropdown-item">Logout</button>
+                </form>
+            </li>
+        </ul>
+    </div>
+}
+else
+{
+    <div class="navbar-nav ms-auto d-flex flex-row gap-2">
+        <a class="nav-item nav-link nav-color" asp-controller="Account" asp-action="Login">Login</a>
+        <a class="nav-item nav-link nav-color" asp-controller="Account" asp-action="Register">Register</a>
+    </div>
+}
+
+================================================================
+KEYCLOAK (настройки через админку, не код):
+- Realm Mikhalko; Login: Email as username=ON; User Profile: -FirstName/-LastName, +avatar(optional)
+- Client MikhalkoUiClient (OpenID Connect): Client authentication=ON, Authorization=ON,
+  Service accounts roles=ON, redirect на https://localhost:7001/*; Service account roles: manage-users
+- ClientScopes: MikhalkoUiClient-dedicated: mapper User Attribute avatar;
+  roles: mapper User client role (claim role, Multivalued ON, Add to access token ON)
+- Roles: POWER-USER; Users: обычный + админ (admin: Role Mapping POWER-USER, Credentials non-temporary)
+================================================================

@@ -164,58 +164,124 @@ CREATE TABLE rating
 
 
 -- ============================================================
--- Комментарии к таблицам и столбцам (поле Comments из схемы)
+-- Лабораторная работа №3 - расширение схемы (5 новых сущностей)
+-- Диалект: PostgreSQL
+-- Выполнять ПОСЛЕ основного скрипта (faculty ... rating).
+--
+-- Новые таблицы:
+--   1. departments - кафедры
+--   2. classrooms  - аудитории
+--   3. semesters   - учебные семестры
+--   4. schedule    - расписание занятий
+--   5. exams       - экзамены и зачёты
+--
+-- Для повторного запуска (раскомментировать при необходимости):
+-- ALTER TABLE prepods DROP COLUMN IF EXISTS department_id;
+-- DROP TABLE IF EXISTS exams, schedule, semesters, classrooms, departments CASCADE;
 -- ============================================================
-COMMENT ON TABLE faculty         IS 'Справочник факультетов';
-COMMENT ON TABLE type_study_load IS 'Виды учебной нагрузки';
-COMMENT ON TABLE subjects        IS 'Справочник дисциплин';
-COMMENT ON TABLE prepods         IS 'Справочник преподавателей';
-COMMENT ON TABLE study_load      IS 'Учебная нагрузка';
-COMMENT ON TABLE groups          IS 'Информация о группах';
-COMMENT ON TABLE students        IS 'Справочник студентов';
-COMMENT ON TABLE lessons         IS 'Нагрузка преподавателя';
-COMMENT ON TABLE rating          IS 'Отметки, полученные студентами';
 
-COMMENT ON COLUMN faculty.id   IS 'Первичный ключ';
-COMMENT ON COLUMN faculty.name IS 'Название факультета';
 
-COMMENT ON COLUMN type_study_load.id   IS 'Первичный ключ';
-COMMENT ON COLUMN type_study_load.name IS 'Тип учебной нагрузки';
+-- ------------------------------------------------------------
+-- 1. DEPARTMENTS - кафедры (входят в состав факультета)
+-- ------------------------------------------------------------
+CREATE TABLE departments
+(
+    id         INTEGER      NOT NULL,
+    name       VARCHAR(120) NOT NULL,
+    faculty_id INTEGER      NOT NULL,
+    CONSTRAINT pk_departments         PRIMARY KEY (id),
+    CONSTRAINT uq_departments_name    UNIQUE (faculty_id, name),
+    CONSTRAINT fk_faculty_departments FOREIGN KEY (faculty_id)
+        REFERENCES faculty (id)
+);
 
-COMMENT ON COLUMN subjects.id         IS 'Первичный ключ';
-COMMENT ON COLUMN subjects.name       IS 'Название дисциплины';
-COMMENT ON COLUMN subjects.faculty_id IS 'Факультет, на который распределена нагрузка';
+-- Преподаватель принадлежит кафедре (связь с существующей таблицей)
+ALTER TABLE prepods
+    ADD COLUMN department_id INTEGER;
 
-COMMENT ON COLUMN prepods.id         IS 'Первичный ключ';
-COMMENT ON COLUMN prepods.last_name  IS 'Фамилия преподавателя';
-COMMENT ON COLUMN prepods.first_name IS 'Имя преподавателя';
-COMMENT ON COLUMN prepods.faculty_id IS 'Факультет, на котором работает преподаватель';
+ALTER TABLE prepods
+    ADD CONSTRAINT fk_department_prepods FOREIGN KEY (department_id)
+        REFERENCES departments (id);
 
-COMMENT ON COLUMN study_load.id            IS 'Первичный ключ';
-COMMENT ON COLUMN study_load.hours         IS 'Количество планируемых часов на дисциплину';
-COMMENT ON COLUMN study_load.subject_id    IS 'Предмет';
-COMMENT ON COLUMN study_load.type_study_id IS 'Тип нагрузки';
+-- ------------------------------------------------------------
+-- 2. CLASSROOMS - аудитории
+-- ------------------------------------------------------------
+CREATE TABLE classrooms
+(
+    id       INTEGER     NOT NULL,
+    building VARCHAR(10) NOT NULL,
+    room_no  VARCHAR(10) NOT NULL,
+    capacity INTEGER     NOT NULL,
+    CONSTRAINT pk_classrooms      PRIMARY KEY (id),
+    CONSTRAINT uq_classrooms_room UNIQUE (building, room_no),
+    CONSTRAINT chkClassroomCap    CHECK (capacity > 0)
+);
 
-COMMENT ON COLUMN groups.id         IS 'Первичный ключ';
-COMMENT ON COLUMN groups.name       IS 'Номер группы';
-COMMENT ON COLUMN groups.head_group IS 'Староста группы';
-COMMENT ON COLUMN groups.faculty_id IS 'Факультет, к которому принадлежит группа';
+-- ------------------------------------------------------------
+-- 3. SEMESTERS - учебные семестры
+-- ------------------------------------------------------------
+CREATE TABLE semesters
+(
+    id         INTEGER     NOT NULL,
+    name       VARCHAR(30) NOT NULL,
+    start_date DATE        NOT NULL,
+    end_date   DATE        NOT NULL,
+    CONSTRAINT pk_semesters      PRIMARY KEY (id),
+    CONSTRAINT uq_semesters_name UNIQUE (name),
+    CONSTRAINT chkSemesterDates  CHECK (end_date > start_date)
+);
 
-COMMENT ON COLUMN students.id         IS 'Первичный ключ';
-COMMENT ON COLUMN students.last_name  IS 'Фамилия студента';
-COMMENT ON COLUMN students.first_name IS 'Имя студента';
-COMMENT ON COLUMN students.group_id   IS 'Группа, в которой обучается студент';
+-- ------------------------------------------------------------
+-- 4. SCHEDULE - расписание занятий
+--    Занятие берётся из LESSONS (группа + преподаватель + нагрузка),
+--    к нему добавляются аудитория, семестр, день недели и номер пары.
+-- ------------------------------------------------------------
+CREATE TABLE schedule
+(
+    id           INTEGER  NOT NULL,
+    group_id     INTEGER  NOT NULL,
+    prepod_id    INTEGER  NOT NULL,
+    study_id     CHAR(20) NOT NULL,
+    classroom_id INTEGER  NOT NULL,
+    semester_id  INTEGER  NOT NULL,
+    weekday      INTEGER  NOT NULL,
+    pair_no      INTEGER  NOT NULL,
+    CONSTRAINT pk_schedule           PRIMARY KEY (id),
+    CONSTRAINT chkScheduleWeekday    CHECK (weekday BETWEEN 1 AND 7),
+    CONSTRAINT chkSchedulePair       CHECK (pair_no BETWEEN 1 AND 8),
+    CONSTRAINT fk_lessons_schedule   FOREIGN KEY (group_id, prepod_id, study_id)
+        REFERENCES lessons (group_id, prepod_id, study_id),
+    CONSTRAINT fk_classroom_schedule FOREIGN KEY (classroom_id)
+        REFERENCES classrooms (id),
+    CONSTRAINT fk_semester_schedule  FOREIGN KEY (semester_id)
+        REFERENCES semesters (id),
+    -- в одно время нет двух занятий у группы / преподавателя / в аудитории
+    CONSTRAINT uq_schedule_group     UNIQUE (semester_id, weekday, pair_no, group_id),
+    CONSTRAINT uq_schedule_prepod    UNIQUE (semester_id, weekday, pair_no, prepod_id),
+    CONSTRAINT uq_schedule_room      UNIQUE (semester_id, weekday, pair_no, classroom_id)
+);
 
-COMMENT ON COLUMN lessons.group_id  IS 'Группа';
-COMMENT ON COLUMN lessons.prepod_id IS 'Преподаватель';
-COMMENT ON COLUMN lessons.study_id  IS 'Учебная нагрузка';
-
-COMMENT ON COLUMN rating.id         IS 'Первичный ключ';
-COMMENT ON COLUMN rating.date       IS 'Дата получения отметки';
-COMMENT ON COLUMN rating.val        IS 'Полученная отметка';
-COMMENT ON COLUMN rating.student_id IS 'Студент';
-COMMENT ON COLUMN rating.study_id   IS 'Учебный предмет';
-COMMENT ON COLUMN rating.prepods_id IS 'Преподаватель';
-COMMENT ON COLUMN rating.is_absent  IS 'Отсутствовал ли студент на занятии';
-
+-- ------------------------------------------------------------
+-- 5. EXAMS - экзамены и зачёты группы по нагрузке
+-- ------------------------------------------------------------
+CREATE TABLE exams
+(
+    id           INTEGER     NOT NULL,
+    group_id     INTEGER     NOT NULL,
+    prepod_id    INTEGER     NOT NULL,
+    study_id     CHAR(20)    NOT NULL,
+    classroom_id INTEGER     NOT NULL,
+    semester_id  INTEGER     NOT NULL,
+    exam_date    DATE        NOT NULL,
+    exam_form    VARCHAR(10) NOT NULL DEFAULT 'EXAM',
+    CONSTRAINT pk_exams           PRIMARY KEY (id),
+    CONSTRAINT chkExamForm        CHECK (exam_form IN ('EXAM', 'CREDIT')),
+    CONSTRAINT uq_exams           UNIQUE (group_id, study_id, semester_id, exam_form),
+    CONSTRAINT fk_lessons_exams   FOREIGN KEY (group_id, prepod_id, study_id)
+        REFERENCES lessons (group_id, prepod_id, study_id),
+    CONSTRAINT fk_classroom_exams FOREIGN KEY (classroom_id)
+        REFERENCES classrooms (id),
+    CONSTRAINT fk_semester_exams  FOREIGN KEY (semester_id)
+        REFERENCES semesters (id)
+);
 

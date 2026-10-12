@@ -13,9 +13,8 @@
 {% endblock %}
 
 {% block content %}
-<div id="top" itemscope itemtype="https://schema.org/CarRental" data-page="lr1-demo">
+<div id="top" itemscope itemtype="https://schema.org/RentalCarReservation" data-page="lr1-demo">
   <meta itemprop="name" content="Прокат авто — ЛР1 демо">
-  <meta itemprop="address" content="Минск">
 
   <header>
     <h1 id="page-title" class="demo-title" title="Демонстрационная страница ЛР1">ЛР1: HTML-демо <span style="color:#4e73df;">на одной странице</span></h1>
@@ -244,6 +243,15 @@ total = round(base * days, 2)</code></pre>
                   <option value="borisov">Борисов</option>
                 </optgroup>
               </select></p>
+            <p><label for="f-model">Марка авто (datalist — выбор из подсказок или свой вариант):</label>
+              <input type="text" id="f-model" name="model" list="car-models" placeholder="Начните вводить…" autocomplete="off">
+              <datalist id="car-models">
+                <option value="Tesla Model S">Электро, комфорт</option>
+                <option value="Geely Emgrand">Седан, эконом</option>
+                <option value="Skoda Octavia">Седан, комфорт</option>
+                <option value="Toyota Camry">Седан, комфорт</option>
+                <option value="Volkswagen Tiguan">Внедорожник</option>
+              </datalist></p>
             <p><label for="f-text">Комментарий:</label><br>
               <textarea id="f-text" name="comment" rows="3" cols="40" maxlength="500" placeholder="Детское кресло, второй водитель…" spellcheck="true"></textarea></p>
           </fieldset>
