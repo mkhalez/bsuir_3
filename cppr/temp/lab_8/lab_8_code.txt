@@ -1,0 +1,430 @@
+================================================================
+LAB 8. ВЕСЬ КОД, ДОБАВЛЕННЫЙ/ИЗМЕНЕННЫЙ В ХОДЕ ЛАБЫ
+Маршрутизация Catalog + HybridCache/Redis в API + корзина в сессии
+Пути UI относительно cppr/WebApplication1/labs/, API — labs.API/
+Комментарии из кода убраны. Для измененных файлов показано БЫЛО / СТАЛО.
+================================================================
+
+==================== 1. Controllers/ProductController.cs — маршруты ====================
+----- БЫЛО -----
+public class ProductController : Controller
+{
+    ...
+    public async Task<IActionResult> Index(string? category, int pageNo = 1)
+
+----- СТАЛО (добавлены 2 строки атрибутов) -----
+public class ProductController : Controller
+{
+    ...
+    [Route("Catalog")]
+    [Route("Catalog/{category?}")]
+    public async Task<IActionResult> Index(string? category, int pageNo = 1)
+
+Итоговые адреса: /Catalog и /Catalog/{category}, pageNo — через query (?pageNo=N).
+Старый адрес /Product/Index больше не работает (действие на атрибут-маршрутах
+исключено из conventional-маршрутизации). Все ссылки asp-controller=Product
+(меню, пейджер, dropdown категорий) теперь генерируют /Catalog/... автоматически.
+
+==================== 2. Views/Product/_ListPartial.cshtml — категория из маршрута ====================
+----- БЫЛО -----
+    string? category = request.Query["category"].ToString();
+
+----- СТАЛО -----
+    string? category = ViewContext.RouteData.Values["category"]?.ToString();
+    if (string.IsNullOrEmpty(category))
+        category = null;
+
+Категория теперь приходит сегментом маршрута /Catalog/{category},
+а не query-параметром, поэтому читаем ее из RouteData.
+
+==================== 3. compose.yaml — сервис Redis ====================
+----- ДОБАВЛЕНО в services: -----
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - postgres_network
+    restart: unless-stopped
+
+----- ДОБАВЛЕНО в volumes: -----
+  redis_data:
+    driver: local
+
+==================== 4. labs.API/appsettings.json — строка Redis ====================
+  "ConnectionStrings": {
+    "Postgres": "Server=127.0.0.1;Port=5432;Database=MenuDb;User Id=admin;Password=123456",
+    "Redis": "localhost:6379"
+  },
+
+==================== 5. labs.API/labs.API.csproj — пакеты ====================
+<PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.11.0" />
+<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.13" />
+
+==================== 6. labs.API/Program.cs — регистрация кэша ====================
+----- БЫЛО -----
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+----- СТАЛО -----
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+builder.Services.AddHybridCache();
+builder.Services.AddStackExchangeRedisCache(opt =>
+{
+    opt.InstanceName = "labs_";
+    opt.Configuration = builder.Configuration.GetConnectionString("Redis");
+});
+
+==================== 7. labs.API/EndPoints/DishEndpoints.cs — кэширование списка ====================
+----- БЫЛО -----
+        group.MapGet("/{category:alpha?}", async (
+            IMediator mediator,
+            string? category,
+            int pageNo = 1,
+            int pageSize = 3) =>
+        {
+            var data = await mediator.Send(
+                new GetListOfProducts(category, pageNo, pageSize));
+            return TypedResults.Ok(data);
+        })
+        .WithName("GetAllDishes")
+        .AllowAnonymous();;
+
+----- СТАЛО -----
+        group.MapGet("/{category:alpha?}", async (
+            IMediator mediator,
+            HybridCache cache,
+            string? category,
+            int pageNo = 1,
+            int pageSize = 3) =>
+        {
+            var data = await cache.GetOrCreateAsync(
+                $"dishes_{category}_{pageNo}_{pageSize}",
+                async token => await mediator.Send(
+                    new GetListOfProducts(category, pageNo, pageSize), token),
+                options: new HybridCacheEntryOptions
+                {
+                    Expiration = TimeSpan.FromMinutes(1),
+                    LocalCacheExpiration = TimeSpan.FromSeconds(30)
+                });
+            return TypedResults.Ok(data);
+        })
+        .WithName("GetAllDishes")
+        .AllowAnonymous();
+
+Логика времен: запрос чаще чем раз в 30 сек — ответ из локального кэша,
+от 30 сек до 1 мин — из Redis, реже чем раз в минуту — из базы.
+
+==================== 8. labs.Domain/Models/CartItem.cs — НОВЫЙ ====================
+using labs.Domain.Entities;
+
+namespace labs.Domain.Models;
+
+public class CartItem
+{
+    public Dish Item { get; set; } = new();
+    public int Count { get; set; }
+}
+
+==================== 9. labs.Domain/Models/Cart.cs — НОВЫЙ ====================
+using labs.Domain.Entities;
+
+namespace labs.Domain.Models;
+
+public class Cart
+{
+    public Dictionary<int, CartItem> CartItems { get; set; } = new();
+
+    public virtual void AddToCart(Dish dish)
+    {
+        if (CartItems.TryGetValue(dish.Id, out var item))
+            item.Count++;
+        else
+            CartItems[dish.Id] = new CartItem { Item = dish, Count = 1 };
+    }
+
+    public virtual void RemoveItems(int id)
+    {
+        CartItems.Remove(id);
+    }
+
+    public virtual void ClearAll()
+    {
+        CartItems.Clear();
+    }
+
+    public int Count => CartItems.Values.Sum(item => item.Count);
+
+    public double TotalCalories =>
+        CartItems.Values.Sum(item => (double)item.Item.Calories * item.Count);
+}
+
+==================== 10. labs/Extensions/SessionExtensions.cs — НОВЫЙ ====================
+using System.Text.Json;
+
+namespace labs.Extensions;
+
+public static class SessionExtensions
+{
+    public static void Set<T>(this ISession session, string key, T value)
+    {
+        session.SetString(key, JsonSerializer.Serialize(value));
+    }
+
+    public static T? Get<T>(this ISession session, string key)
+    {
+        var data = session.GetString(key);
+        return data is null ? default : JsonSerializer.Deserialize<T>(data);
+    }
+}
+
+==================== 11. labs/Program.cs — сессия ====================
+----- БЫЛО -----
+builder.Services.AddHttpContextAccessor();
+
+----- СТАЛО -----
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession();
+
+----- БЫЛО -----
+app.UseRouting();
+
+app.UseAuthentication();
+
+----- СТАЛО -----
+app.UseRouting();
+
+app.UseSession();
+
+app.UseAuthentication();
+
+==================== 12. labs/Models/SessionCart.cs — НОВЫЙ ====================
+using System.Text.Json.Serialization;
+using labs.Domain.Entities;
+using labs.Domain.Models;
+using labs.Extensions;
+
+namespace labs.Models;
+
+public class SessionCart : Cart
+{
+    [JsonIgnore]
+    public ISession? Session { get; set; }
+
+    public static Cart GetCart(IServiceProvider services)
+    {
+        var session = services
+            .GetRequiredService<IHttpContextAccessor>()
+            .HttpContext?.Session;
+        var cart = session?.Get<SessionCart>("cart") ?? new SessionCart();
+        cart.Session = session;
+        return cart;
+    }
+
+    public override void AddToCart(Dish dish)
+    {
+        base.AddToCart(dish);
+        Session?.Set("cart", this);
+    }
+
+    public override void RemoveItems(int id)
+    {
+        base.RemoveItems(id);
+        Session?.Set("cart", this);
+    }
+
+    public override void ClearAll()
+    {
+        base.ClearAll();
+        Session?.Remove("cart");
+    }
+}
+
+==================== 13. labs/Extensions/HostingExtensions.cs — регистрация корзины ====================
+----- БЫЛО -----
+        builder.Services.AddScoped<IFileService, LocalFileService>();
+        builder.Services.AddHttpClient<AccountController>();
+
+----- СТАЛО -----
+        builder.Services.AddScoped<IFileService, LocalFileService>();
+        builder.Services.AddHttpClient<AccountController>();
+
+        builder.Services.AddScoped<Cart>(sp => SessionCart.GetCart(sp));
+
+Тип Cart резолвится через global using labs.Domain.Models, SessionCart — через labs.Models.
+
+==================== 14. labs/Controllers/CartController.cs — НОВЫЙ ====================
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace labs.Controllers;
+
+public class CartController : Controller
+{
+    private readonly IProductService _productService;
+    private readonly Cart _cart;
+
+    public CartController(IProductService productService, Cart cart)
+    {
+        _productService = productService;
+        _cart = cart;
+    }
+
+    public IActionResult Index()
+    {
+        return View(_cart);
+    }
+
+    [Authorize]
+    [Route("[controller]/add/{id:int}")]
+    public async Task<ActionResult> Add(int id, string? returnUrl)
+    {
+        var data = await _productService.GetProductByIdAsync(id);
+        if (data.Successfull && data.Data is not null)
+        {
+            _cart.AddToCart(data.Data);
+        }
+
+        return Redirect(string.IsNullOrEmpty(returnUrl) ? "/Catalog" : returnUrl);
+    }
+
+    public IActionResult Remove(int id)
+    {
+        _cart.RemoveItems(id);
+        return RedirectToAction("Index");
+    }
+
+    public IActionResult Clear()
+    {
+        _cart.ClearAll();
+        return RedirectToAction("Index");
+    }
+}
+
+Контроллер и ViewComponent сессию напрямую не трогают — корзина приходит
+в конструктор как Scoped-сервис (требование задания 4).
+
+==================== 15. labs/Components/CartViewComponent.cs — ИЗМЕНЕН ====================
+----- БЫЛО -----
+using Microsoft.AspNetCore.Mvc;
+
+namespace labs.Components;
+
+public class CartViewComponent : ViewComponent
+{
+    public IViewComponentResult Invoke()
+    {
+        return View();
+    }
+}
+
+----- СТАЛО -----
+using Microsoft.AspNetCore.Mvc;
+
+namespace labs.Components;
+
+public class CartViewComponent : ViewComponent
+{
+    private readonly Cart _cart;
+
+    public CartViewComponent(Cart cart)
+    {
+        _cart = cart;
+    }
+
+    public IViewComponentResult Invoke()
+    {
+        return View(_cart);
+    }
+}
+
+==================== 16. labs/Views/Shared/Components/Cart/Default.cshtml — ИЗМЕНЕН ====================
+----- БЫЛО -----
+<a asp-controller="Cart" asp-action="Index" class="navbar-text ms-auto">
+    00,0 руб <i class="bi bi-cart"></i> (0)
+</a>
+
+----- СТАЛО -----
+@model Cart
+
+<a asp-controller="Cart" asp-action="Index" class="navbar-text ms-auto">
+    @Model.TotalCalories ккал <i class="bi bi-cart"></i> (@Model.Count)
+</a>
+
+==================== 17. labs/Views/Cart/Index.cshtml — НОВЫЙ ====================
+@model Cart
+
+@{
+    ViewData["Title"] = "Корзина";
+}
+
+<h2 class="my-3">Корзина заказов</h2>
+
+@if (Model.CartItems.Count == 0)
+{
+    <div class="alert alert-info">
+        Корзина пуста. <a asp-controller="Product" asp-action="Index">Перейти в каталог</a>
+    </div>
+}
+else
+{
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Блюдо</th>
+                <th>Калории (1 шт.)</th>
+                <th>Количество</th>
+                <th>Калории всего</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.CartItems.Values)
+            {
+                <tr>
+                    <td>
+                        <img src="@item.Item.Image" width="60" class="img-thumbnail me-2" alt="@item.Item.Name" />
+                        @item.Item.Name
+                    </td>
+                    <td>@item.Item.Calories</td>
+                    <td>@item.Count</td>
+                    <td>@(item.Item.Calories * item.Count)</td>
+                    <td>
+                        <a asp-controller="Cart"
+                           asp-action="Remove"
+                           asp-route-id="@item.Item.Id"
+                           class="btn btn-danger btn-sm">
+                            <i class="bi bi-trash"></i> Удалить
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr class="table-secondary fw-bold">
+                <td>Итого</td>
+                <td></td>
+                <td>@Model.Count</td>
+                <td>@Model.TotalCalories</td>
+                <td>
+                    <a asp-controller="Cart"
+                       asp-action="Clear"
+                       class="btn btn-outline-danger btn-sm">
+                        Очистить корзину
+                    </a>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <a asp-controller="Product" asp-action="Index" class="btn btn-outline-primary">
+        Продолжить покупки
+    </a>
+}

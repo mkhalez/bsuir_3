@@ -1,0 +1,442 @@
+================================================================
+Лабораторная работа №9. Модульное тестирование (xUnit + NSubstitute)
+Проект: cppr/WebApplication1
+Путь тестов: cppr/WebApplication1/labs.Tests
+Всего тестов: 10 (Task 1 = 5, Task 2 = 5). Результат прогона: Passed 10 / Failed 0.
+Комментарии из кода убраны. Для измененных файлов показано БЫЛО / СТАЛО.
+================================================================
+
+==================== 1. labs.Tests/labs.Tests.csproj — СТАЛО ====================
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\labs\labs.csproj" />
+    <ProjectReference Include="..\labs.API\labs.API.csproj" />
+    <ProjectReference Include="..\labs.Domain\labs.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
+
+ЧТО ДОБАВЛЕНО В ПРОЕКТ ТЕСТОВ (п.3.2 задания):
+  - NSubstitute 5.3.0                              — имитация сервисов/интерфейсов;
+  - Microsoft.EntityFrameworkCore.Sqlite 8.0.7     — SQLite in-memory (предпочтительный провайдер);
+  - xunit / xunit.runner.visualstudio / Test.Sdk    — сам xUnit;
+  - FrameworkReference Microsoft.AspNetCore.App     — вместо пакета Microsoft.AspNetCore.Mvc,
+    т.к. проекты labs и labs.API используют Web SDK и MVC приходит из общей платформы.
+  - ProjectReference на labs, labs.API, labs.Domain — ссылки на основной проект, API и Domain.
+
+==================== 2. labs.Tests/ProductControllerTests.cs — НОВЫЙ (Задание 1) ====================
+using labs.Controllers;
+using labs.Domain.Entities;
+using labs.Domain.Models;
+using labs.Services.CategoryService;
+using labs.Services.ProductService;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
+
+namespace labs.Tests;
+
+public class ProductControllerTests
+{
+    private static readonly List<Category> Categories = new()
+    {
+        new Category { Id = 1, Name = "Супы", NormalizedName = "soups" },
+        new Category { Id = 2, Name = "Салаты", NormalizedName = "salads" },
+    };
+
+    private static ProductController CreateController(
+        IProductService productService,
+        ICategoryService categoryService)
+    {
+        var tempDataFactory = Substitute.For<ITempDataDictionaryFactory>();
+        tempDataFactory.GetTempData(Arg.Any<HttpContext>())
+            .Returns(Substitute.For<ITempDataDictionary>());
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ITempDataDictionaryFactory>(tempDataFactory);
+
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider()
+        };
+
+        return new ProductController(productService, categoryService)
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+    }
+
+    private static ICategoryService CategoryServiceWith(List<Category> categories)
+    {
+        var categoryService = Substitute.For<ICategoryService>();
+        categoryService.GetCategoryListAsync()
+            .Returns(ResponseData<List<Category>>.Success(categories));
+        return categoryService;
+    }
+
+    private static IProductService ProductServiceWith(ResponseData<ListModel<Dish>> response)
+    {
+        var productService = Substitute.For<IProductService>();
+        productService.GetProductListAsync(Arg.Any<string?>(), Arg.Any<int>())
+            .Returns(response);
+        return productService;
+    }
+
+    [Fact]
+    public async Task Index_ReturnsNotFound_WhenCategoriesRequestFails()
+    {
+        var categoryService = Substitute.For<ICategoryService>();
+        categoryService.GetCategoryListAsync()
+            .Returns(ResponseData<List<Category>>.Error("Категории недоступны"));
+        var controller = CreateController(Substitute.For<IProductService>(), categoryService);
+
+        var result = await controller.Index(null);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Index_ReturnsNotFound_WhenProductsRequestFails()
+    {
+        var categoryService = CategoryServiceWith(Categories);
+        var productService = ProductServiceWith(
+            ResponseData<ListModel<Dish>>.Error("Блюда недоступны"));
+        var controller = CreateController(productService, categoryService);
+
+        var result = await controller.Index(null);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Index_PutsCategoriesAndModelIntoView()
+    {
+        var expectedModel = new ListModel<Dish>
+        {
+            Items = new List<Dish> { new() { Id = 1, Name = "Борщ", Calories = 330 } },
+            CurrentPage = 1,
+            TotalPages = 1
+        };
+        var categoryService = CategoryServiceWith(Categories);
+        var productService = ProductServiceWith(
+            ResponseData<ListModel<Dish>>.Success(expectedModel));
+        var controller = CreateController(productService, categoryService);
+
+        var result = await controller.Index(null);
+
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var viewCategories = Assert.IsType<List<Category>>(viewResult.ViewData["categories"]);
+        Assert.Equal(Categories, viewCategories);
+        Assert.Same(expectedModel, viewResult.Model);
+    }
+
+    [Fact]
+    public async Task Index_SetsCurrentCategoryToAll_WhenCategoryNotPassed()
+    {
+        var categoryService = CategoryServiceWith(Categories);
+        var productService = ProductServiceWith(
+            ResponseData<ListModel<Dish>>.Success(new ListModel<Dish>()));
+        var controller = CreateController(productService, categoryService);
+
+        var result = await controller.Index(null);
+
+        var viewResult = Assert.IsType<ViewResult>(result);
+        Assert.Equal("Все", viewResult.ViewData["currentCategory"]);
+    }
+
+    [Fact]
+    public async Task Index_SetsCurrentCategoryName_WhenCategoryPassed()
+    {
+        var categoryService = CategoryServiceWith(Categories);
+        var productService = ProductServiceWith(
+            ResponseData<ListModel<Dish>>.Success(new ListModel<Dish>()));
+        var controller = CreateController(productService, categoryService);
+
+        var result = await controller.Index("soups");
+
+        var viewResult = Assert.IsType<ViewResult>(result);
+        Assert.Equal("Супы", viewResult.ViewData["currentCategory"]);
+    }
+}
+
+ЧТО ПРОВЕРЯЮТ ТЕСТЫ (соответствие п.3.3 задания):
+  1. Index_ReturnsNotFound_WhenCategoriesRequestFails — 404 при неуспешном списке категорий;
+  2. Index_ReturnsNotFound_WhenProductsRequestFails   — 404 при неуспешном списке объектов;
+  3. Index_PutsCategoriesAndModelIntoView             — ViewData["categories"] заполнен, модель = ListModel<Dish>;
+  4. Index_SetsCurrentCategoryToAll_WhenCategoryNotPassed — currentCategory = "Все" без категории;
+  5. Index_SetsCurrentCategoryName_WhenCategoryPassed — currentCategory = имя категории ("soups" -> "Супы").
+
+Как имитируется Request: контроллеру задается ControllerContext с DefaultHttpContext
+(а для доступа Controller.View к TempData регистрируется подставной ITempDataDictionaryFactory).
+Сервисы IProductService и ICategoryService имитируются через NSubstitute
+(методы GetProductListAsync / GetCategoryListAsync).
+
+==================== 3. labs.Tests/GetListOfProductsHandlerTests.cs — НОВЫЙ (Задание 2) ====================
+using labs.API.Data;
+using labs.API.Use_Cases;
+using labs.Domain.Entities;
+using labs.Domain.Models;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+
+namespace labs.Tests;
+
+public class GetListOfProductsHandlerTests : IDisposable
+{
+    private readonly SqliteConnection _connection;
+    private readonly AppDbContext _context;
+    private readonly GetListOfProductsHandler _handler;
+
+    public GetListOfProductsHandlerTests()
+    {
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open();
+
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(_connection)
+            .Options;
+
+        _context = new AppDbContext(options);
+        _context.Database.EnsureCreated();
+
+        Seed();
+
+        _handler = new GetListOfProductsHandler(_context);
+    }
+
+    private void Seed()
+    {
+        var soups = new Category { Name = "Супы", NormalizedName = "soups" };
+        var salads = new Category { Name = "Салаты", NormalizedName = "salads" };
+        var drinks = new Category { Name = "Напитки", NormalizedName = "drinks" };
+
+        _context.Categories.AddRange(soups, salads, drinks);
+        _context.SaveChanges();
+
+        var dishes = new List<Dish>();
+        for (var i = 0; i < 10; i++)
+        {
+            dishes.Add(new Dish
+            {
+                Name = $"Суп {i}", Calories = 100, CategoryId = soups.Id
+            });
+        }
+
+        for (var i = 0; i < 8; i++)
+        {
+            dishes.Add(new Dish
+            {
+                Name = $"Салат {i}", Calories = 200, CategoryId = salads.Id
+            });
+        }
+
+        for (var i = 0; i < 7; i++)
+        {
+            dishes.Add(new Dish
+            {
+                Name = $"Напиток {i}", Calories = 50, CategoryId = drinks.Id
+            });
+        }
+
+        _context.Dishes.AddRange(dishes);
+        _context.SaveChanges();
+    }
+
+    [Fact]
+    public async Task ReturnsFirstPageOfThreeItemsByDefault()
+    {
+        var result = await _handler.Handle(new GetListOfProducts(null), CancellationToken.None);
+
+        Assert.IsType<ResponseData<ListModel<Dish>>>(result);
+        Assert.True(result.Successfull);
+        Assert.Equal(1, result.Data!.CurrentPage);
+        Assert.Equal(3, result.Data.Items.Count);
+        Assert.Equal(9, result.Data.TotalPages);
+        Assert.Equal(_context.Dishes.OrderBy(d => d.Id).First().Id, result.Data.Items[0].Id);
+    }
+
+    [Fact]
+    public async Task SelectsRequestedPage()
+    {
+        var expectedIds = _context.Dishes
+            .OrderBy(d => d.Id)
+            .Skip(3)
+            .Take(3)
+            .Select(d => d.Id)
+            .ToList();
+
+        var result = await _handler.Handle(
+            new GetListOfProducts(null, PageNo: 2), CancellationToken.None);
+
+        Assert.True(result.Successfull);
+        Assert.Equal(2, result.Data!.CurrentPage);
+        Assert.Equal(expectedIds, result.Data.Items.Select(d => d.Id).ToList());
+    }
+
+    [Fact]
+    public async Task FiltersItemsByCategory()
+    {
+        var result = await _handler.Handle(
+            new GetListOfProducts("soups", PageNo: 1, PageSize: 20), CancellationToken.None);
+
+        Assert.True(result.Successfull);
+        Assert.Equal(10, result.Data!.Items.Count);
+        Assert.All(result.Data.Items, d => Assert.StartsWith("Суп", d.Name));
+        Assert.Equal(1, result.Data.TotalPages);
+    }
+
+    [Fact]
+    public async Task DoesNotAllowPageSizeGreaterThanMaximum()
+    {
+        var result = await _handler.Handle(
+            new GetListOfProducts(null, PageNo: 1, PageSize: 100), CancellationToken.None);
+
+        Assert.True(result.Successfull);
+        Assert.Equal(20, result.Data!.Items.Count);
+        Assert.Equal(2, result.Data.TotalPages);
+    }
+
+    [Fact]
+    public async Task ReturnsError_WhenPageNumberExceedsTotalPages()
+    {
+        var result = await _handler.Handle(
+            new GetListOfProducts(null, PageNo: 999), CancellationToken.None);
+
+        Assert.False(result.Successfull);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _connection.Dispose();
+    }
+}
+
+ВАЖНО (соответствие терминологии):
+  В проекте labs.API бизнес-логика списка блюд вынесена в MediatR-обработчик
+  GetListOfProductsHandler (метод Handle), т.к. в лабораторной №8 контроллеры API были
+  заменены на CQRS/MediatR. Это и есть аналог класса ProductService/метода GetProductListAsync
+  из текста задания. Тестируется именно он.
+
+ЧТО ПРОВЕРЯЮТ ТЕСТЫ (соответствие п.3.4 задания):
+  1. ReturnsFirstPageOfThreeItemsByDefault          — по умолчанию 1-я страница по 3 объекта,
+                                                       TotalPages считается верно (25/3 -> 9);
+  2. SelectsRequestedPage                           — корректный выбор заданной страницы (PageNo=2);
+  3. FiltersItemsByCategory                         — фильтрация по категории (soups -> только супы);
+  4. DoesNotAllowPageSizeGreaterThanMaximum         — размер страницы зажимается до максимума 20;
+  5. ReturnsError_WhenPageNumberExceedsTotalPages   — Success=false при PageNo > TotalPages.
+
+Как имитируется БД: SQLite in-memory (DataSource=:memory:), соединение держится открытым
+на время теста, схема создается через EnsureCreated(), данные засеваются в конструкторе.
+Контекст AppDbContext создается через DbContextOptionsBuilder.UseSqlite(connection).
+
+==================== 4. labs.API/Use-Cases/GetListOfProducts.cs — ИЗМЕНЕН (production) ====================
+----- БЫЛО -----
+        var count = await query.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling(count / (double)pageSize);
+        var pageNo = Math.Clamp(request.PageNo, 1, Math.Max(totalPages, 1));
+
+----- СТАЛО -----
+        var count = await query.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling(count / (double)pageSize);
+
+        if (request.PageNo > Math.Max(totalPages, 1))
+        {
+            return ResponseData<ListModel<Dish>>.Error(
+                "Запрошенная страница не существует");
+        }
+
+        var pageNo = Math.Clamp(request.PageNo, 1, Math.Max(totalPages, 1));
+
+Почему изменено: пункт 3.4 задания требует, чтобы метод возвращал Success=false,
+если номер страницы превышает общее количество страниц. Раньше номер просто зажимался
+к последней странице (Math.Clamp), и это поведение нельзя было протестировать.
+Для пустой выборки (count=0, totalPages=0) ошибки нет — возвращается пустой список.
+
+Полный итоговый метод Handle:
+public async Task<ResponseData<ListModel<Dish>>> Handle(
+    GetListOfProducts request, CancellationToken cancellationToken)
+{
+    var pageSize = Math.Clamp(request.PageSize, 1, _maxPageSize);
+
+    IQueryable<Dish> query = db.Dishes.AsNoTracking();
+
+    if (!string.IsNullOrEmpty(request.CategoryNormalizedName))
+    {
+        query = query.Where(d =>
+            d.Category!.NormalizedName == request.CategoryNormalizedName);
+    }
+
+    query = query.OrderBy(d => d.Id);
+
+    var count = await query.CountAsync(cancellationToken);
+    var totalPages = (int)Math.Ceiling(count / (double)pageSize);
+
+    if (request.PageNo > Math.Max(totalPages, 1))
+    {
+        return ResponseData<ListModel<Dish>>.Error(
+            "Запрошенная страница не существует");
+    }
+
+    var pageNo = Math.Clamp(request.PageNo, 1, Math.Max(totalPages, 1));
+
+    var items = await query
+        .Skip((pageNo - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync(cancellationToken);
+
+    return ResponseData<ListModel<Dish>>.Success(new ListModel<Dish>
+    {
+        Items = items,
+        CurrentPage = pageNo,
+        TotalPages = totalPages
+    });
+}
+
+==================== 5. labs.Tests/GlobalUsings.cs — БЕЗ ИЗМЕНЕНИЙ ====================
+global using Xunit;
+
+==================== 6. УДАЛЁННЫЙ ФАЙЛ ====================
+labs.Tests/UnitTest1.cs — удалён (пустой шаблонный тест-заглушка).
+
+==================== ИТОГИ ====================
+- Проект тестов labs.Tests настроен: xUnit + NSubstitute + EF Core Sqlite + FrameworkReference
+  Microsoft.AspNetCore.App + ссылки на labs/labs.API/labs.Domain.
+- Задание 1: 5 тестов ProductController.Index (404 x2, ViewData categories, currentCategory
+  "Все"/имя категории, модель = ListModel<Dish>).
+- Задание 2: 5 тестов списка API на SQLite in-memory (страница по умолчанию, выбор страницы,
+  фильтр по категории, ограничение PageSize, Success=false при выходе за диапазон страниц).
+- Прогон: dotnet test -> Passed: 10, Failed: 0.
+================================================================

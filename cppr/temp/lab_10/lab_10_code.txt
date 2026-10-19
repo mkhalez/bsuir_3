@@ -1,0 +1,235 @@
+================================================================
+Лабораторная работа №10. Логирование, Middleware.
+Проект: cppr/WebApplication1
+Основной проект (UI): labs  (папка cppr/WebApplication1/labs)
+Стек: Serilog.AspNetCore + кастомный Middleware
+Конфигурация Serilog хранится в appsettings.json (как требует задание).
+Проверено в рантайме: запрос без кода 2xx логируется в консоль и файл.
+================================================================
+
+==================== 1. labs/labs.csproj — ДОБАВЛЕН ПАКЕТ ====================
+----- ДОБАВЛЕНО в ItemGroup с PackageReference -----
+      <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+
+Примечание: пакет Serilog.AspNetCore транзитивно подключает Serilog,
+Serilog.Settings.Configuration (чтение настроек из appsettings.json),
+Serilog.Sinks.Console и Serilog.Sinks.File (вывод в консоль и в файл),
+поэтому отдельно их добавлять не нужно.
+
+Как добавлено (команда):
+  dotnet add labs/labs.csproj package Serilog.AspNetCore --version 8.0.3
+
+==================== 2. labs/Program.cs — ИЗМЕНЕН ====================
+----- БЫЛО (начало файла) -----
+using labs.Extensions;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using labs.HelperClasses;
+
+var builder = WebApplication.CreateBuilder(args);
+
+----- СТАЛО -----
+using labs.Extensions;
+using labs.Middleware;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using labs.HelperClasses;
+using Serilog;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) =>
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services));
+
+----- БЫЛО (сборка приложения) -----
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+
+----- СТАЛО -----
+var app = builder.Build();
+
+app.UseMiddleware<RequestLoggingMiddleware>();
+
+// Configure the HTTP request pipeline.
+
+ПОЯСНЕНИЕ:
+  - builder.Host.UseSerilog(...) подключает Serilog как провайдер логирования
+    ASP.NET Core и читает настройки из конфигурации (appsettings.json) и из DI.
+    Поэтому весь стандартный ILogger<T> (в т.ч. в Middleware) пишет через Serilog.
+  - app.UseMiddleware<RequestLoggingMiddleware>() ставится ПЕРВЫМ в конвейере,
+    чтобы обернуть все последующие Middleware и увидеть итоговый код ответа
+    (включая 302/307 от https-редиректа и авторизации).
+
+Полный конвейер (фрагмент):
+var app = builder.Build();
+
+app.UseMiddleware<RequestLoggingMiddleware>();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseSession();
+
+app.UseAuthentication();
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapRazorPages().RequireAuthorization("admin");
+
+app.Run();
+
+==================== 3. labs/Middleware/RequestLoggingMiddleware.cs — НОВЫЙ ====================
+namespace labs.Middleware;
+
+public class RequestLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<RequestLoggingMiddleware> _logger;
+
+    public RequestLoggingMiddleware(
+        RequestDelegate next,
+        ILogger<RequestLoggingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        await _next(context);
+
+        if (context.Response.StatusCode < 200 || context.Response.StatusCode >= 300)
+        {
+            _logger.LogInformation("---> request {Url} returns {StatusCode}",
+                context.Request.Path.Value,
+                context.Response.StatusCode);
+        }
+    }
+}
+
+ПОЯСНЕНИЕ:
+  - RequestDelegate _next — ссылка на следующий компонент конвейера;
+    вызов await _next(context) пропускает запрос дальше и возвращает управление
+    после того, как ответ сформирован (тогда известен итоговый статус-код).
+  - Проверяется код: всё, что не 2xx (StatusCode < 200 или >= 300), логируется.
+  - Сообщение содержит URL (context.Request.Path) и код (context.Response.StatusCode),
+    что соответствует формату из задания: "---> request /menu returns 404".
+
+==================== 4. labs/appsettings.json — ИЗМЕНЕН ====================
+----- БЫЛО -----
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  ...
+
+----- СТАЛО -----
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "Serilog": {
+    "Using": [ "Serilog.Sinks.Console", "Serilog.Sinks.File" ],
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "Microsoft.Hosting.Lifetime": "Information"
+      }
+    },
+    "WriteTo": [
+      { "Name": "Console" },
+      {
+        "Name": "File",
+        "Args": {
+          "path": "logs/labs-.log",
+          "rollingInterval": "Day",
+          "outputTemplate": "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+        }
+      }
+    ]
+  },
+  "AllowedHosts": "*",
+  "ItemsPerPage": 3,
+  "UriData": {
+    "ApiUri": "https://localhost:7002/api/"
+  },
+  "Keycloak": {
+    "Host": "http://localhost:8080",
+    "Realm": "Mikhalko",
+    "ClientId": "MikhalkoUiClient",
+    "ClientSecret": "PZZ9yvU9sNRFkjEj46niGccP21YTt1T0"
+  }
+}
+
+ПОЯСНЕНИЕ:
+  - WriteTo Console — вывод в консоль; WriteTo File — сохранение в файл logs/labs-YYYYMMDD.log
+    с ежедневной прокруткой (rollingInterval: Day).
+  - outputTemplate задает формат строки ровно как в задании:
+    "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}".
+  - Минимальный уровень Information, для Microsoft — Warning.
+
+==================== 5. РЕЗУЛЬТАТ ПРОВЕРКИ В РАНТАЙМЕ ====================
+Запуск (порт 5099, чтобы не конфликтовать с уже запущенным экземпляром):
+  ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5099 \
+      dotnet bin/Debug/net8.0/labs.dll
+
+Запросы:
+  curl /nope   -> 404   (логируется)
+  curl /Cart    -> 200   (НЕ логируется)
+  curl /        -> 200   (НЕ логируется)
+
+Файл logs/labs-20261017.log (фрагмент):
+  2026-10-17 03:34:15.858 +03:00 [INF] Now listening on: http://localhost:5099
+  2026-10-17 03:34:15.920 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+  2026-10-17 03:34:23.244 +03:00 [WRN] Failed to determine the https port for redirect.
+  2026-10-17 03:34:23.311 +03:00 [INF] ---> request /nope returns 404
+  2026-10-17 03:34:24.626 +03:00 [INF] Application is shutting down...
+
+Строка "2026-10-17 03:34:23.311 +03:00 [INF] ---> request /nope returns 404"
+полностью повторяет требуемый в задании формат.
+
+==================== ИТОГИ ====================
+- В основной проект labs добавлен пакет Serilog.AspNetCore.
+- Serilog настроен в Program.cs и читает конфигурацию из appsettings.json
+  (разделы MinimumLevel и WriteTo: Console + File).
+- Написан Middleware RequestLoggingMiddleware, который логирует ВСЕ запросы
+  с кодом ответа не из 2xx (URL + код состояния) и добавлен в конвейер.
+- Логи пишутся и в консоль, и в файл logs/labs-<дата>.log.
+- Рантайм-проверка подтвердила: 404 логируется, 200 — нет.
+
+==================== ВОПРОСЫ ДЛЯ САМОПРОВЕРКИ (устно) ====================
+1. Middleware используются для обработки HTTP-запросов по цепочке (конвейеру):
+   аутентификация, авторизация, логирование, обработка ошибок, статика и т.д.
+2. RequestDelegate _next — делегат следующего Middleware в конвейере; его вызов
+   передает управление дальше и позволяет выполнить код до и после обработки.
+3. Конвейер: запрос проходит компоненты в порядке регистрации; каждый решает,
+   вызвать _next или замкнуть обработку (short-circuit); ответ идет в обратном порядке.
+4. Да: после await _next(context) Middleware может читать/менять ответ
+   (в т.ч. статус-код, заголовки) — это и используется в лабе.
+5. Добавить через app.UseMiddleware<T>() (или app.Use(...)), соблюдая порядок в Program.cs.
+================================================================
