@@ -6,6 +6,7 @@ using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace labs.API.EndPoints;
 
@@ -19,16 +20,24 @@ public static class DishEndpoints
         
         group.MapGet("/{category:alpha?}", async (
             IMediator mediator,
+            HybridCache cache,
             string? category,
             int pageNo = 1,
             int pageSize = 3) =>
         {
-            var data = await mediator.Send(
-                new GetListOfProducts(category, pageNo, pageSize));
+            var data = await cache.GetOrCreateAsync(
+                $"dishes_{category}_{pageNo}_{pageSize}",
+                async token => await mediator.Send(
+                    new GetListOfProducts(category, pageNo, pageSize), token),
+                options: new HybridCacheEntryOptions
+                {
+                    Expiration = TimeSpan.FromMinutes(1),
+                    LocalCacheExpiration = TimeSpan.FromSeconds(30)
+                });
             return TypedResults.Ok(data);
         })
         .WithName("GetAllDishes")
-        .AllowAnonymous();;
+        .AllowAnonymous();
 
         group.MapGet("/{id:int}", async Task<Results<Ok<Dish>, NotFound>> (int id, AppDbContext db) =>
         {

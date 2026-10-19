@@ -14,6 +14,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
+builder.Services.AddHybridCache();
+builder.Services.AddStackExchangeRedisCache(opt =>
+{
+    opt.InstanceName = "labs_";
+    opt.Configuration = builder.Configuration.GetConnectionString("Redis");
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();

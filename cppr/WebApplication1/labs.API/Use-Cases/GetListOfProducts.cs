@@ -33,6 +33,13 @@ public class GetListOfProductsHandler(AppDbContext db)
 
         var count = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(count / (double)pageSize);
+
+        if (request.PageNo > Math.Max(totalPages, 1))
+        {
+            return ResponseData<ListModel<Dish>>.Error(
+                "Запрошенная страница не существует");
+        }
+
         var pageNo = Math.Clamp(request.PageNo, 1, Math.Max(totalPages, 1));
 
         var items = await query
