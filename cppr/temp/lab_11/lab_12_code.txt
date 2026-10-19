@@ -1,0 +1,950 @@
+ЛАБОРАТОРНАЯ РАБОТА №12
+Blazor WebAssembly + Keycloak + защищённый API
+
+============================================================
+1. ЧТО СДЕЛАНО
+============================================================
+
+1. Создан проект WebAssembly:
+   dotnet new blazorwasm -n WebApplication1.BlazorWasm --auth Individual --framework net8.0
+
+2. Проект добавлен в решение WebApplication1.sln.
+
+3. Добавлена ссылка на проект labs.Domain, чтобы использовать общие модели Category, Dish,
+   ResponseData и ListModel.
+
+4. Настроена аутентификация через Keycloak:
+   - realm: Mikhalko;
+   - клиент: MikhalkoWasmClient;
+   - тип клиента: public;
+   - включены Standard Flow, Implicit Flow и Direct Access Grants;
+   - redirect URI:
+     http://localhost:5003/*
+     http://localhost:5003/authentication/login-callback
+     http://localhost:5003/authentication/logout-callback
+   - web origin: http://localhost:5003;
+   - ResponseType: id_token token;
+   - создана роль POWER-USER;
+   - создан пользователь lab12@mail.ru с паролем sasha1234789;
+   - пользователю назначена роль POWER-USER;
+   - добавлен protocol mapper "realm roles", который кладёт роли в claim roles.
+
+5. В API:
+   - добавлена CORS-политика "wasm" для http://localhost:5003;
+   - включён UseCors("wasm");
+   - для JWT задан NameClaimType = preferred_username;
+   - с GET /api/Dish убран AllowAnonymous();
+   - список блюд теперь требует авторизации и роли POWER-USER.
+
+6. В Blazor WASM:
+   - настроены HttpClient, IDataService, OIDC;
+   - реализованы сервис загрузки категорий и блюд;
+   - реализованы компоненты списка блюд, выбора категории, постраничного вывода
+     и подробной информации о блюде;
+   - создана защищённая страница /menu;
+   - добавлен пункт меню "Меню дня";
+   - добавлен bootstrap.bundle.min.js для работы dropdown.
+
+7. Проверено:
+   - неавторизованный GET /api/Dish возвращает 401;
+   - авторизованный GET /api/Dish с JWT возвращает 200;
+   - вход через Keycloak в браузере проходит;
+   - после входа открывается /menu, отображается имя пользователя lab12@mail.ru;
+   - работают фильтр по категориям, пагинация и кнопка "Подробнее";
+   - сборка решения успешна;
+   - тесты labs.Tests: 10 passed.
+
+============================================================
+2. ЗАПУСК
+============================================================
+
+Из каталога /home/mkh-alez/bsuir/bsuir_3/cppr/WebApplication1:
+
+docker compose --env-file postgres.env up -d
+
+dotnet run --project labs.API/labs.API.csproj --launch-profile http
+
+dotnet run --project WebApplication1.BlazorWasm/WebApplication1.BlazorWasm.csproj --launch-profile http
+
+API:  http://localhost:5002
+WASM: http://localhost:5003
+Keycloak: http://localhost:8080
+
+Вход:
+  логин:  lab12@mail.ru
+  пароль: sasha1234789
+
+============================================================
+3. НАСТРОЙКА KEYCLOAK
+============================================================
+
+Использовался realm Mikhalko и администратор Keycloak admin / 123456.
+
+Клиент MikhalkoWasmClient:
+{
+  "clientId": "MikhalkoWasmClient",
+  "enabled": true,
+  "publicClient": true,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": true,
+  "directAccessGrantsEnabled": true,
+  "redirectUris": [
+    "http://localhost:5003/*",
+    "http://localhost:5003/authentication/login-callback",
+    "http://localhost:5003/authentication/logout-callback"
+  ],
+  "webOrigins": [
+    "http://localhost:5003"
+  ]
+}
+
+Роль realm:
+{
+  "name": "POWER-USER",
+  "description": "Power user",
+  "composite": false,
+  "clientRole": false
+}
+
+Пользователь:
+{
+  "username": "lab12@mail.ru",
+  "email": "lab12@mail.ru",
+  "emailVerified": true,
+  "enabled": true,
+  "credentials": [
+    {
+      "type": "password",
+      "value": "sasha1234789",
+      "temporary": false
+    }
+  ]
+}
+
+Пользователю назначена роль POWER-USER.
+
+Protocol mapper клиента MikhalkoWasmClient:
+{
+  "name": "realm roles",
+  "protocol": "openid-connect",
+  "protocolMapper": "oidc-usermodel-realm-role-mapper",
+  "config": {
+    "introspection.token.claim": "true",
+    "multivalued": "true",
+    "userinfo.token.claim": "true",
+    "id.token.claim": "true",
+    "access.token.claim": "true",
+    "claim.name": "roles",
+    "jsonType.label": "String"
+  }
+}
+
+Проверка токена показала наличие claim:
+  roles = ["default-roles-mikhalko", "POWER-USER", ...]
+  preferred_username = "lab12@mail.ru"
+
+============================================================
+4. ИЗМЕНЕНИЯ В РЕШЕНИИ
+============================================================
+
+В WebApplication1.sln добавлен проект:
+
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApplication1.BlazorWasm", "WebApplication1.BlazorWasm\WebApplication1.BlazorWasm.csproj", "{BBE43D7A-4DE5-4C86-B901-F9A940282173}"
+EndProject
+
+============================================================
+5. КОД ПРОЕКТА WebApplication1.BlazorWasm
+============================================================
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/WebApplication1.BlazorWasm.csproj
+------------------------------------------------------------
+
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.31" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.31" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="8.0.31" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\labs.Domain\labs.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Program.cs
+------------------------------------------------------------
+
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using WebApplication1.BlazorWasm;
+using WebApplication1.BlazorWasm.Services;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
+
+var apiUrl = builder.Configuration["ApiUrl"] ?? "http://localhost:5002/api/";
+
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(apiUrl)
+});
+builder.Services.AddScoped<IDataService, DataService>();
+
+builder.Services.AddOidcAuthentication(options =>
+{
+    builder.Configuration.Bind("Keycloak", options.ProviderOptions);
+    options.UserOptions.NameClaim = "preferred_username";
+    options.UserOptions.RoleClaim = "roles";
+});
+
+await builder.Build().RunAsync();
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/wwwroot/appsettings.json
+------------------------------------------------------------
+
+{
+  "Keycloak": {
+    "Authority": "http://localhost:8080/realms/Mikhalko/",
+    "ClientId": "MikhalkoWasmClient",
+    "MetadataUrl": "http://localhost:8080/realms/Mikhalko/.well-known/openid-configuration",
+    "ResponseType": "id_token token"
+  },
+  "ApiUrl": "http://localhost:5002/api/",
+  "ItemsPerPage": 3
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/wwwroot/appsettings.Development.json
+------------------------------------------------------------
+
+{
+  "Keycloak": {
+    "Authority": "http://localhost:8080/realms/Mikhalko/",
+    "ClientId": "MikhalkoWasmClient",
+    "MetadataUrl": "http://localhost:8080/realms/Mikhalko/.well-known/openid-configuration",
+    "ResponseType": "id_token token"
+  },
+  "ApiUrl": "http://localhost:5002/api/",
+  "ItemsPerPage": 3
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Properties/launchSettings.json
+------------------------------------------------------------
+
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:26485",
+      "sslPort": 44306
+    }
+  },
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+      "applicationUrl": "http://localhost:5003",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/_Imports.razor
+------------------------------------------------------------
+
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using Microsoft.JSInterop
+@using WebApplication1.BlazorWasm
+@using WebApplication1.BlazorWasm.Components
+@using WebApplication1.BlazorWasm.Layout
+@using WebApplication1.BlazorWasm.Services
+@using labs.Domain.Entities
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/wwwroot/index.html
+------------------------------------------------------------
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebApplication1.BlazorWasm</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="WebApplication1.BlazorWasm.styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="css/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="_content/Microsoft.AspNetCore.Components.WebAssembly.Authentication/AuthenticationService.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Layout/NavMenu.razor
+------------------------------------------------------------
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">WebApplication1.BlazorWasm</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="counter">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="weather">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="menu">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Меню дня
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Services/IDataService.cs
+------------------------------------------------------------
+
+using labs.Domain.Entities;
+
+namespace WebApplication1.BlazorWasm.Services;
+
+public interface IDataService
+{
+    event Action DataLoaded;
+
+    List<Category> Categories { get; set; }
+
+    List<Dish> Dishes { get; set; }
+
+    bool Success { get; set; }
+
+    string ErrorMessage { get; set; }
+
+    int TotalPages { get; set; }
+
+    int CurrentPage { get; set; }
+
+    Category? SelectedCategory { get; set; }
+
+    Task GetProductListAsync(int pageNo = 1);
+
+    Task GetCategoryListAsync();
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Services/DataService.cs
+------------------------------------------------------------
+
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using labs.Domain.Entities;
+using labs.Domain.Models;
+using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
+
+namespace WebApplication1.BlazorWasm.Services;
+
+public class DataService : IDataService
+{
+    private readonly HttpClient _httpClient;
+    private readonly IAccessTokenProvider _tokenProvider;
+    private readonly string _pageSize;
+    private readonly JsonSerializerOptions _serializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public DataService(
+        HttpClient httpClient,
+        IConfiguration configuration,
+        IAccessTokenProvider tokenProvider)
+    {
+        _httpClient = httpClient;
+        _tokenProvider = tokenProvider;
+        _pageSize = configuration["ItemsPerPage"] ?? "3";
+    }
+
+    public event Action DataLoaded = delegate { };
+
+    public List<Category> Categories { get; set; } = new();
+
+    public List<Dish> Dishes { get; set; } = new();
+
+    public bool Success { get; set; } = true;
+
+    public string ErrorMessage { get; set; } = string.Empty;
+
+    public int TotalPages { get; set; } = 1;
+
+    public int CurrentPage { get; set; } = 1;
+
+    public Category? SelectedCategory { get; set; }
+
+    public async Task GetProductListAsync(int pageNo = 1)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, BuildProductListUri(pageNo));
+
+        if (!await AddAuthorizationHeaderAsync(request))
+        {
+            DataLoaded();
+            return;
+        }
+
+        try
+        {
+            var response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Success = false;
+                ErrorMessage = $"Данные не получены от сервера. Error: {response.StatusCode}";
+                DataLoaded();
+                return;
+            }
+
+            var data = await response.Content
+                .ReadFromJsonAsync<ResponseData<ListModel<Dish>>>(_serializerOptions);
+
+            if (data is null || !data.Successfull || data.Data is null)
+            {
+                Success = false;
+                ErrorMessage = data?.ErrorMessage ?? "Пустой ответ от сервера";
+                DataLoaded();
+                return;
+            }
+
+            Dishes = data.Data.Items;
+            CurrentPage = data.Data.CurrentPage;
+            TotalPages = data.Data.TotalPages;
+            Success = true;
+            ErrorMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Success = false;
+            ErrorMessage = $"API недоступен: {ex.Message}";
+        }
+
+        DataLoaded();
+    }
+
+    public async Task GetCategoryListAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("Categories");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Success = false;
+                ErrorMessage = $"Категории не получены. Error: {response.StatusCode}";
+                DataLoaded();
+                return;
+            }
+
+            Categories = await response.Content
+                .ReadFromJsonAsync<List<Category>>(_serializerOptions) ?? new List<Category>();
+            Success = true;
+            ErrorMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Success = false;
+            ErrorMessage = $"API недоступен: {ex.Message}";
+        }
+
+        DataLoaded();
+    }
+
+    private string BuildProductListUri(int pageNo)
+    {
+        var route = new StringBuilder("Dish/");
+
+        if (SelectedCategory is not null)
+        {
+            route.Append($"{SelectedCategory.NormalizedName}/");
+        }
+
+        var query = new List<string>();
+
+        if (pageNo > 1)
+        {
+            query.Add($"pageNo={pageNo}");
+        }
+
+        if (_pageSize != "3")
+        {
+            query.Add($"pageSize={_pageSize}");
+        }
+
+        if (query.Count > 0)
+        {
+            route.Append('?').Append(string.Join('&', query));
+        }
+
+        return route.ToString();
+    }
+
+    private async Task<bool> AddAuthorizationHeaderAsync(HttpRequestMessage request)
+    {
+        var tokenRequest = await _tokenProvider.RequestAccessToken();
+
+        if (tokenRequest.TryGetToken(out var token))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+            return true;
+        }
+
+        Success = false;
+        ErrorMessage = "Не удалось получить JWT-токен";
+        return false;
+    }
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Components/DishesList.razor
+------------------------------------------------------------
+
+@inject IDataService DataService
+@implements IDisposable
+
+@if (!DataService.Success)
+{
+    <div class="alert alert-danger" role="alert">@DataService.ErrorMessage</div>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Описание</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var dish in DataService.Dishes)
+            {
+                <tr>
+                    <td>@dish.Name</td>
+                    <td>@dish.Description</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => DishSelected.InvokeAsync(dish.Id)">
+                            Подробнее
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter]
+    public EventCallback<int> DishSelected { get; set; }
+
+    protected override void OnInitialized()
+    {
+        DataService.DataLoaded += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        DataService.DataLoaded -= StateHasChanged;
+    }
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Components/CategorySelector.razor
+------------------------------------------------------------
+
+@inject IDataService DataService
+@implements IDisposable
+
+<div class="dropdown mb-3">
+    <button class="btn btn-outline-secondary dropdown-toggle"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false">
+        @CurrentCategoryName
+    </button>
+    <ul class="dropdown-menu">
+        <li>
+            <button class="dropdown-item" @onclick="() => SelectCategoryAsync(null)">Все</button>
+        </li>
+        @foreach (var category in DataService.Categories)
+        {
+            <li>
+                <button class="dropdown-item" @onclick="() => SelectCategoryAsync(category)">
+                    @category.Name
+                </button>
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    private string CurrentCategoryName => DataService.SelectedCategory?.Name ?? "Все";
+
+    protected override async Task OnInitializedAsync()
+    {
+        DataService.DataLoaded += StateHasChanged;
+        await DataService.GetCategoryListAsync();
+    }
+
+    private async Task SelectCategoryAsync(Category? category)
+    {
+        DataService.SelectedCategory = category;
+        await DataService.GetProductListAsync(1);
+    }
+
+    public void Dispose()
+    {
+        DataService.DataLoaded -= StateHasChanged;
+    }
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Components/Pager.razor
+------------------------------------------------------------
+
+@inject IDataService DataService
+@implements IDisposable
+
+@if (DataService.TotalPages > 1)
+{
+    <nav aria-label="Страницы: @CategoryName">
+        <ul class="pagination">
+            @for (var page = 1; page <= DataService.TotalPages; page++)
+            {
+                var pageNumber = page;
+                <li class="page-item @(pageNumber == DataService.CurrentPage ? "active" : null)">
+                    <button class="page-link" @onclick="() => GoToPageAsync(pageNumber)">
+                        @pageNumber
+                    </button>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+@code {
+    [Parameter]
+    public string? CategoryName { get; set; }
+
+    protected override void OnInitialized()
+    {
+        DataService.DataLoaded += StateHasChanged;
+    }
+
+    private async Task GoToPageAsync(int pageNo)
+    {
+        await DataService.GetProductListAsync(pageNo);
+    }
+
+    public void Dispose()
+    {
+        DataService.DataLoaded -= StateHasChanged;
+    }
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Components/DishDetails.razor
+------------------------------------------------------------
+
+@using labs.Domain.Entities
+
+@if (SelectedDish is not null)
+{
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">@SelectedDish.Name</h5>
+            @if (!string.IsNullOrWhiteSpace(SelectedDish.Image))
+            {
+                <img src="@SelectedDish.Image" alt="@SelectedDish.Name" class="img-fluid mb-3" style="max-width: 240px;" />
+            }
+            <p class="card-text">@SelectedDish.Description</p>
+            <p class="card-text"><strong>Калорийность:</strong> @SelectedDish.Calories</p>
+            <p class="card-text"><strong>Категория:</strong> @SelectedDish.Category?.Name</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Dish? SelectedDish { get; set; }
+}
+
+------------------------------------------------------------
+WebApplication1.BlazorWasm/Pages/Menu.razor
+------------------------------------------------------------
+
+@page "/menu"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IDataService DataService
+@implements IDisposable
+
+<PageTitle>Меню дня</PageTitle>
+
+<h3>Меню дня</h3>
+
+<CategorySelector />
+<DishesList DishSelected="OnDishSelected" />
+<Pager CategoryName="@(DataService.SelectedCategory?.Name ?? "Все")" />
+<DishDetails SelectedDish="SelectedDish" />
+
+@code {
+    private Dish? SelectedDish;
+
+    protected override async Task OnInitializedAsync()
+    {
+        DataService.DataLoaded += OnDataLoaded;
+        await DataService.GetProductListAsync(1);
+    }
+
+    private void OnDataLoaded()
+    {
+        if (SelectedDish is not null && !DataService.Dishes.Any(d => d.Id == SelectedDish.Id))
+        {
+            SelectedDish = null;
+        }
+        StateHasChanged();
+    }
+
+    private void OnDishSelected(int id)
+    {
+        SelectedDish = DataService.Dishes.FirstOrDefault(d => d.Id == id);
+        if (SelectedDish is not null)
+        {
+            SelectedDish.Category ??= DataService.Categories.FirstOrDefault(c => c.Id == SelectedDish.CategoryId);
+        }
+    }
+
+    public void Dispose()
+    {
+        DataService.DataLoaded -= OnDataLoaded;
+    }
+}
+
+------------------------------------------------------------
+Изменения в Layout/NavMenu.razor.css
+------------------------------------------------------------
+
+Удалены комментарии шаблона, оставлены только правила:
+
+    .collapse {
+        display: block;
+    }
+
+    .nav-scrollable {
+        height: calc(100vh - 3.5rem);
+        overflow-y: auto;
+    }
+
+============================================================
+6. ИЗМЕНЕНИЯ В API
+============================================================
+
+------------------------------------------------------------
+labs.API/Program.cs
+------------------------------------------------------------
+
+Добавлена CORS-политика:
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("wasm", policy =>
+        policy.WithOrigins("http://localhost:5003")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
+Добавлено включение CORS до аутентификации:
+
+app.UseCors("wasm");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+В настройку JWT добавлено:
+
+o.TokenValidationParameters.NameClaimType = "preferred_username";
+
+Итоговая настройка JWT:
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+    {
+        o.MetadataAddress = $"{authServer.Host}/realms/{authServer.Realm}/.well-known/openid-configuration";
+        o.Authority = $"{authServer.Host}/realms/{authServer.Realm}";
+        o.Audience = "account";
+        o.RequireHttpsMetadata = false;
+        o.TokenValidationParameters.NameClaimType = "preferred_username";
+        o.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = ctx =>
+            {
+                Console.WriteLine($"JWT FAILED: {ctx.Exception.GetType().Name}: {ctx.Exception.Message}");
+                return Task.CompletedTask;
+            },
+            OnChallenge = ctx =>
+            {
+                Console.WriteLine($"JWT CHALLENGE: {ctx.Error} | {ctx.ErrorDescription} | {ctx.AuthenticateFailure?.Message}");
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+Политика авторизации:
+
+builder.Services.AddAuthorization(opt =>
+{
+    opt.AddPolicy("admin", p => p.RequireRole("POWER-USER"));
+});
+
+Примечание: Keycloak при стандартном inbound mapping кладёт роли из claim roles
+в ClaimTypes.Role. Поэтому RoleClaimType = "roles" задавать не нужно, иначе
+RequireRole("POWER-USER") не находит роль и API возвращает 403. После удаления
+этой настройки проверка роли работает.
+
+------------------------------------------------------------
+labs.API/EndPoints/DishEndpoints.cs
+------------------------------------------------------------
+
+Было:
+
+    .WithName("GetAllDishes")
+    .AllowAnonymous();
+
+Стало:
+
+    .WithName("GetAllDishes");
+
+Теперь GET /api/Dish требует авторизации по политике "admin".
+
+============================================================
+7. ПРОВЕРКА
+============================================================
+
+Сборка:
+
+dotnet build WebApplication1.sln --nologo -v q
+Build succeeded.
+
+Тесты:
+
+dotnet test labs.Tests/labs.Tests.csproj --nologo -v q
+Passed: 10, Failed: 0.
+
+API без токена:
+
+GET http://localhost:5002/api/Dish
+HTTP 401
+
+API с JWT:
+
+GET http://localhost:5002/api/Dish
+Authorization: Bearer <access_token>
+HTTP 200
+
+Категории:
+
+GET http://localhost:5002/api/Categories
+HTTP 200
+
+Браузерная проверка через headless Chrome:
+- переход на http://localhost:5003/menu перенаправляет на Keycloak;
+- вход lab12@mail.ru / sasha1234789 проходит;
+- возврат на http://localhost:5003/menu;
+- отображается "Hello, lab12@mail.ru!";
+- загружаются блюда: Борщ, Харчо, Стейк;
+- кнопка "Подробнее" показывает калорийность и категорию;
+- фильтр "Салаты" показывает Цезарь и убирает Борщ;
+- пагинация на страницу 2 показывает Цезарь и Лимонад;
+- отображается кнопка "Log out".

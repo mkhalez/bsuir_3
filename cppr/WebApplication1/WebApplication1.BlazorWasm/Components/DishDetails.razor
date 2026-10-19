@@ -1,0 +1,22 @@
+@using labs.Domain.Entities
+
+@if (SelectedDish is not null)
+{
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">@SelectedDish.Name</h5>
+            @if (!string.IsNullOrWhiteSpace(SelectedDish.Image))
+            {
+                <img src="@SelectedDish.Image" alt="@SelectedDish.Name" class="img-fluid mb-3" style="max-width: 240px;" />
+            }
+            <p class="card-text">@SelectedDish.Description</p>
+            <p class="card-text"><strong>Калорийность:</strong> @SelectedDish.Calories</p>
+            <p class="card-text"><strong>Категория:</strong> @SelectedDish.Category?.Name</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Dish? SelectedDish { get; set; }
+}

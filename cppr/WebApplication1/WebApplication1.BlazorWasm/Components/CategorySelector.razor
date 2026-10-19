@@ -1,0 +1,45 @@
+@inject IDataService DataService
+@implements IDisposable
+
+<div class="dropdown mb-3">
+    <button class="btn btn-outline-secondary dropdown-toggle"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false">
+        @CurrentCategoryName
+    </button>
+    <ul class="dropdown-menu">
+        <li>
+            <button class="dropdown-item" @onclick="() => SelectCategoryAsync(null)">Все</button>
+        </li>
+        @foreach (var category in DataService.Categories)
+        {
+            <li>
+                <button class="dropdown-item" @onclick="() => SelectCategoryAsync(category)">
+                    @category.Name
+                </button>
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    private string CurrentCategoryName => DataService.SelectedCategory?.Name ?? "Все";
+
+    protected override async Task OnInitializedAsync()
+    {
+        DataService.DataLoaded += StateHasChanged;
+        await DataService.GetCategoryListAsync();
+    }
+
+    private async Task SelectCategoryAsync(Category? category)
+    {
+        DataService.SelectedCategory = category;
+        await DataService.GetProductListAsync(1);
+    }
+
+    public void Dispose()
+    {
+        DataService.DataLoaded -= StateHasChanged;
+    }
+}

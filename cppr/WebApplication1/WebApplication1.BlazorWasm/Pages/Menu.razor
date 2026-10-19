@@ -1,0 +1,47 @@
+@page "/menu"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IDataService DataService
+@implements IDisposable
+
+<PageTitle>Меню дня</PageTitle>
+
+<h3>Меню дня</h3>
+
+<CategorySelector />
+<DishesList DishSelected="OnDishSelected" />
+<Pager CategoryName="@(DataService.SelectedCategory?.Name ?? "Все")" />
+<DishDetails SelectedDish="SelectedDish" />
+
+@code {
+    private Dish? SelectedDish;
+
+    protected override async Task OnInitializedAsync()
+    {
+        DataService.DataLoaded += OnDataLoaded;
+        await DataService.GetProductListAsync(1);
+    }
+
+    private void OnDataLoaded()
+    {
+        if (SelectedDish is not null && !DataService.Dishes.Any(d => d.Id == SelectedDish.Id))
+        {
+            SelectedDish = null;
+        }
+        StateHasChanged();
+    }
+
+    private void OnDishSelected(int id)
+    {
+        SelectedDish = DataService.Dishes.FirstOrDefault(d => d.Id == id);
+        if (SelectedDish is not null)
+        {
+            SelectedDish.Category ??= DataService.Categories.FirstOrDefault(c => c.Id == SelectedDish.CategoryId);
+        }
+    }
+
+    public void Dispose()
+    {
+        DataService.DataLoaded -= OnDataLoaded;
+    }
+}

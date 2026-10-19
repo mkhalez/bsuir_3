@@ -25,6 +25,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("wasm", policy =>
+        policy.WithOrigins("http://localhost:5003")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
 builder.Services.AddHttpContextAccessor();
 
 
@@ -39,6 +47,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.Authority = $"{authServer.Host}/realms/{authServer.Realm}";
         o.Audience = "account";
         o.RequireHttpsMetadata = false;
+        o.TokenValidationParameters.NameClaimType = "preferred_username";
         o.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = ctx =>
@@ -60,6 +69,8 @@ builder.Services.AddAuthorization(opt =>
 });
 
 var app = builder.Build();
+
+app.UseCors("wasm");
 
 app.UseAuthentication();
 app.UseAuthorization();

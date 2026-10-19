@@ -1,0 +1,49 @@
+@inject IDataService DataService
+@implements IDisposable
+
+@if (!DataService.Success)
+{
+    <div class="alert alert-danger" role="alert">@DataService.ErrorMessage</div>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Описание</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var dish in DataService.Dishes)
+            {
+                <tr>
+                    <td>@dish.Name</td>
+                    <td>@dish.Description</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => DishSelected.InvokeAsync(dish.Id)">
+                            Подробнее
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter]
+    public EventCallback<int> DishSelected { get; set; }
+
+    protected override void OnInitialized()
+    {
+        DataService.DataLoaded += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        DataService.DataLoaded -= StateHasChanged;
+    }
+}

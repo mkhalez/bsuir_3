@@ -36,8 +36,7 @@ public static class DishEndpoints
                 });
             return TypedResults.Ok(data);
         })
-        .WithName("GetAllDishes")
-        .AllowAnonymous();
+        .WithName("GetAllDishes");
 
         group.MapGet("/{id:int}", async Task<Results<Ok<Dish>, NotFound>> (int id, AppDbContext db) =>
         {
