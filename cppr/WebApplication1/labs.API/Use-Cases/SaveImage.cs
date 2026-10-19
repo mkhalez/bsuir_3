@@ -11,11 +11,11 @@ public class SaveImageHandler(
 {
     public async Task<string> Handle(SaveImage request, CancellationToken cancellationToken)
     {
-        // случайное имя файла, чтобы не было дублей
+        
         var extension = Path.GetExtension(request.File.FileName);
         var fileName = $"{Guid.NewGuid()}{extension}";
 
-        // путь к wwwroot/Images
+        
         var imagesFolder = Path.Combine(env.WebRootPath, "Images");
         if (!Directory.Exists(imagesFolder))
         {
@@ -23,13 +23,13 @@ public class SaveImageHandler(
         }
         var filePath = Path.Combine(imagesFolder, fileName);
 
-        // сохраняем файл на диск
+        
         await using (var stream = new FileStream(filePath, FileMode.Create))
         {
             await request.File.CopyToAsync(stream, cancellationToken);
         }
 
-        // формируем полный URL через хост текущего запроса
+        
         var httpRequest = httpContextAccessor.HttpContext?.Request;
         var baseUrl = $"{httpRequest?.Scheme}://{httpRequest?.Host}";
 

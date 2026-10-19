@@ -135,7 +135,7 @@ public static class DishEndpoints
                 return;
             var imagesFolder = Path.Combine(env.WebRootPath, "Images");
             var fullPath = Path.GetFullPath(Path.Combine(imagesFolder, fileName));
-            // защита от выхода за пределы папки Images
+            
             if (!fullPath.StartsWith(Path.GetFullPath(imagesFolder)))
                 return;
             if (File.Exists(fullPath))
