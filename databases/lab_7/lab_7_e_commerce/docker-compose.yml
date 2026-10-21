@@ -1,0 +1,312 @@
+services:
+  auth-postgres:
+    image: postgres:16
+    container_name: shoplab-auth-postgres
+    environment:
+      POSTGRES_DB: ${AUTH_SERVICE_POSTGRES_DB}
+      POSTGRES_USER: ${AUTH_SERVICE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AUTH_SERVICE_POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_SERVICE_POSTGRES_USER} -d ${AUTH_SERVICE_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+
+  user-postgres:
+    image: postgres:16
+    container_name: shoplab-user-postgres
+    environment:
+      POSTGRES_DB: ${USER_SERVICE_POSTGRES_DB}
+      POSTGRES_USER: ${USER_SERVICE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${USER_SERVICE_POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USER_SERVICE_POSTGRES_USER} -d ${USER_SERVICE_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+
+  order-postgres:
+    image: postgres:16
+    container_name: shoplab-order-postgres
+    environment:
+      POSTGRES_DB: ${ORDER_SERVICE_POSTGRES_DB}
+      POSTGRES_USER: ${ORDER_SERVICE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${ORDER_SERVICE_POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ORDER_SERVICE_POSTGRES_USER} -d ${ORDER_SERVICE_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+
+  auth-liquibase:
+    image: liquibase/liquibase:4.29
+    container_name: shoplab-liquibase-auth
+    depends_on:
+      auth-postgres: {condition: service_healthy}
+    volumes: ["./auth-service/migrations:/liquibase/changelog"]
+    environment:
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://auth-postgres:5432/${AUTH_SERVICE_POSTGRES_DB}
+      LIQUIBASE_COMMAND_USERNAME: ${AUTH_SERVICE_POSTGRES_USER}
+      LIQUIBASE_COMMAND_PASSWORD: ${AUTH_SERVICE_POSTGRES_PASSWORD}
+      LIQUIBASE_COMMAND_CHANGELOG_FILE: changelog/changelog.xml
+    command: ["update"]
+    networks: [backend]
+
+  user-liquibase:
+    image: liquibase/liquibase:4.29
+    container_name: shoplab-liquibase-user
+    depends_on:
+      user-postgres: {condition: service_healthy}
+    volumes: ["./user-service/migrations:/liquibase/changelog"]
+    environment:
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://user-postgres:5432/${USER_SERVICE_POSTGRES_DB}
+      LIQUIBASE_COMMAND_USERNAME: ${USER_SERVICE_POSTGRES_USER}
+      LIQUIBASE_COMMAND_PASSWORD: ${USER_SERVICE_POSTGRES_PASSWORD}
+      LIQUIBASE_COMMAND_CHANGELOG_FILE: changelog/changelog.xml
+    command: ["update"]
+    networks: [backend]
+
+  order-liquibase:
+    image: liquibase/liquibase:4.29
+    container_name: shoplab-liquibase-order
+    depends_on:
+      order-postgres: {condition: service_healthy}
+    volumes: ["./order-service/migrations:/liquibase/changelog"]
+    environment:
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://order-postgres:5432/${ORDER_SERVICE_POSTGRES_DB}
+      LIQUIBASE_COMMAND_USERNAME: ${ORDER_SERVICE_POSTGRES_USER}
+      LIQUIBASE_COMMAND_PASSWORD: ${ORDER_SERVICE_POSTGRES_PASSWORD}
+      LIQUIBASE_COMMAND_CHANGELOG_FILE: changelog/changelog.xml
+    command: ["update"]
+    networks: [backend]
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: shoplab-redis
+    command: redis-server --requirepass ${USER_SERVICE_REDIS_PASSWORD} --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${USER_SERVICE_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+
+  kafka-broker-0:
+    image: confluentinc/cp-kafka:7.7.8
+    container_name: shoplab-kafka-broker-0
+    hostname: kafka-broker-0
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+      KAFKA_NODE_ID: 0
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9091,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka-broker-0:9093,1@kafka-broker-1:9093,2@kafka-broker-2:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-broker-0:9091,EXTERNAL://localhost:${KAFKA_BROKER_0_EXTERNAL_PORT:-29092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports: ["${KAFKA_BROKER_0_EXTERNAL_PORT:-29092}:29092"]
+    networks: [backend]
+
+  kafka-broker-1:
+    image: confluentinc/cp-kafka:7.7.8
+    container_name: shoplab-kafka-broker-1
+    hostname: kafka-broker-1
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9091,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka-broker-0:9093,1@kafka-broker-1:9093,2@kafka-broker-2:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-broker-1:9091,EXTERNAL://localhost:${KAFKA_BROKER_1_EXTERNAL_PORT:-29093}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports: ["${KAFKA_BROKER_1_EXTERNAL_PORT:-29093}:29092"]
+    networks: [backend]
+
+  kafka-broker-2:
+    image: confluentinc/cp-kafka:7.7.8
+    container_name: shoplab-kafka-broker-2
+    hostname: kafka-broker-2
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9091,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka-broker-0:9093,1@kafka-broker-1:9093,2@kafka-broker-2:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-broker-2:9091,EXTERNAL://localhost:${KAFKA_BROKER_2_EXTERNAL_PORT:-29094}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports: ["${KAFKA_BROKER_2_EXTERNAL_PORT:-29094}:29092"]
+    networks: [backend]
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:8.2.0
+    container_name: shoplab-schema-registry
+    hostname: schema-registry
+    depends_on: [kafka-broker-0, kafka-broker-1, kafka-broker-2]
+    ports: ["${SCHEMA_REGISTRY_EXTERNAL_PORT:-8087}:8081"]
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka-broker-0:9091,kafka-broker-1:9091,kafka-broker-2:9091
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks: [backend]
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: shoplab-kafka-ui
+    depends_on: [kafka-broker-0, kafka-broker-1, kafka-broker-2, schema-registry]
+    ports: ["${KAFKA_UI_PORT:-8086}:8080"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: shoplab
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-broker-0:9091,kafka-broker-1:9091,kafka-broker-2:9091
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      DYNAMIC_CONFIG_ENABLED: "true"
+    networks: [backend]
+
+  auth-service:
+    image: shoplab/auth-service:local
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    pull_policy: build
+    container_name: shoplab-auth-service
+    depends_on:
+      auth-postgres: {condition: service_healthy}
+      auth-liquibase: {condition: service_completed_successfully}
+      kafka-broker-0: {condition: service_started}
+      kafka-broker-1: {condition: service_started}
+      kafka-broker-2: {condition: service_started}
+      schema-registry: {condition: service_started}
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_HOST: auth-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${AUTH_SERVICE_POSTGRES_DB}
+      POSTGRES_USER: ${AUTH_SERVICE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AUTH_SERVICE_POSTGRES_PASSWORD}
+      KAFKA_BROKER_HOST_1: kafka-broker-0
+      KAFKA_BROKER_HOST_2: kafka-broker-1
+      KAFKA_BROKER_HOST_3: kafka-broker-2
+      KAFKA_BROKER_PORT_1: 9091
+      KAFKA_BROKER_PORT_2: 9091
+      KAFKA_BROKER_PORT_3: 9091
+      SCHEMA_REGISTRY_HOST: schema-registry
+      SCHEMA_REGISTRY_PORT: 8081
+      AUTH_ADMIN_USERNAME: ${AUTH_ADMIN_USERNAME}
+      AUTH_ADMIN_PASSWORD: ${AUTH_ADMIN_PASSWORD}
+      SERVER_PORT: 8080
+    networks: [backend]
+
+  user-service:
+    image: shoplab/user-service:local
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    pull_policy: build
+    container_name: shoplab-user-service
+    depends_on:
+      user-postgres: {condition: service_healthy}
+      user-liquibase: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      kafka-broker-0: {condition: service_started}
+      kafka-broker-1: {condition: service_started}
+      kafka-broker-2: {condition: service_started}
+      schema-registry: {condition: service_started}
+      auth-service: {condition: service_started}
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_HOST: user-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${USER_SERVICE_POSTGRES_DB}
+      POSTGRES_USER: ${USER_SERVICE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${USER_SERVICE_POSTGRES_PASSWORD}
+      KAFKA_BROKER_HOST_1: kafka-broker-0
+      KAFKA_BROKER_HOST_2: kafka-broker-1
+      KAFKA_BROKER_HOST_3: kafka-broker-2
+      KAFKA_BROKER_PORT_1: 9091
+      KAFKA_BROKER_PORT_2: 9091
+      KAFKA_BROKER_PORT_3: 9091
+      SCHEMA_REGISTRY_HOST: schema-registry
+      SCHEMA_REGISTRY_PORT: 8081
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${USER_SERVICE_REDIS_PASSWORD}
+      AUTH_HOST: auth-service
+      AUTH_PORT: 8080
+      SERVER_PORT: 8080
+    networks: [backend]
+
+  order-service:
+    image: shoplab/order-service:local
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    pull_policy: build
+    container_name: shoplab-order-service
+    depends_on:
+      order-postgres: {condition: service_healthy}
+      order-liquibase: {condition: service_completed_successfully}
+      auth-service: {condition: service_started}
+      user-service: {condition: service_started}
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_HOST: order-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${ORDER_SERVICE_POSTGRES_DB}
+      POSTGRES_USER: ${ORDER_SERVICE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${ORDER_SERVICE_POSTGRES_PASSWORD}
+      AUTH_HOST: auth-service
+      AUTH_PORT: 8080
+      USER_SERVICE_HOST: user-service
+      USER_SERVICE_PORT: 8080
+      SERVER_PORT: 8080
+    networks: [backend]
+
+  api-gateway:
+    image: shoplab/api-gateway:local
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    pull_policy: build
+    container_name: shoplab-api-gateway
+    depends_on:
+      auth-service: {condition: service_started}
+      user-service: {condition: service_started}
+      order-service: {condition: service_started}
+    ports: ["8080:8080"]
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8080
+      USER_SERVICE_URL: http://user-service:8080
+      ORDER_SERVICE_URL: http://order-service:8080
+      SERVER_PORT: 8080
+    networks: [backend]
+
+networks:
+  backend: {driver: bridge}

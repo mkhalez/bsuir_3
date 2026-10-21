@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:auth-postgres}:${POSTGRES_PORT:5432}/${POSTGRES_DB:auth_db}
+    username: ${POSTGRES_USER:auth_user}
+    password: ${POSTGRES_PASSWORD:auth_pass_123}
+  kafka:
+    bootstrap-servers:
+      - ${KAFKA_BROKER_HOST_1:kafka-broker-0}:${KAFKA_BROKER_PORT_1:9091}
+      - ${KAFKA_BROKER_HOST_2:kafka-broker-1}:${KAFKA_BROKER_PORT_2:9091}
+      - ${KAFKA_BROKER_HOST_3:kafka-broker-2}:${KAFKA_BROKER_PORT_3:9091}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        acks: all
+        enable.idempotence: true
+        schema.registry.url: http://${SCHEMA_REGISTRY_HOST:schema-registry}:${SCHEMA_REGISTRY_PORT:8081}
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+    consumer:
+      group-id: auth-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: http://${SCHEMA_REGISTRY_HOST:schema-registry}:${SCHEMA_REGISTRY_PORT:8081}
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+        specific.avro.reader: true
+security:
+  initial:
+    admin-username: ${AUTH_ADMIN_USERNAME:admin}
+    admin-password: ${AUTH_ADMIN_PASSWORD:Admin123!}

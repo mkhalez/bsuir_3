@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:order-postgres}:${POSTGRES_PORT:5432}/${POSTGRES_DB:orders_db}
+    username: ${POSTGRES_USER:orders_user}
+    password: ${POSTGRES_PASSWORD:orders_pass_123}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://${AUTH_HOST:auth-service}:${AUTH_PORT:8080}/.well-known/jwks.json
+user-service:
+  base-url: http://${USER_SERVICE_HOST:user-service}:${USER_SERVICE_PORT:8080}/api/users
+  connection-timeout: 3000
+  read-timeout: 3000

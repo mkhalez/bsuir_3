@@ -1,0 +1,25 @@
+spring:
+  profiles:
+    default: local
+  application:
+    name: auth-service
+server:
+  port: 8081
+springdoc:
+  paths-to-exclude: /internal/**,/.well-known/**
+security:
+  keys:
+    public-key: classpath:certs/public_key.pem
+    private-key: classpath:certs/private_key.pem
+    kid: shoplab-auth-0
+  issuer: auth-service
+  access-token-minutes: 10
+  refresh-token-minutes: 60
+kafka:
+  topics:
+    registration: user-registration
+    registration-result: user-registration-result
+  sender:
+    fixed-delay-ms: 2000
+    max-attempts: 3
+    batch-limit: 10

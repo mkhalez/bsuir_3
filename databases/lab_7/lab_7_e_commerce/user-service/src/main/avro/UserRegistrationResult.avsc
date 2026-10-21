@@ -1,0 +1,24 @@
+{
+  "type": "record",
+  "name": "UserRegistrationResult",
+  "namespace": "com.shoplab.contracts.avro",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string"
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "RegistrationStatus",
+        "symbols": ["SUCCESS", "FAIL"]
+      }
+    },
+    {
+      "name": "message",
+      "type": ["null", "string"],
+      "default": null
+    }
+  ]
+}

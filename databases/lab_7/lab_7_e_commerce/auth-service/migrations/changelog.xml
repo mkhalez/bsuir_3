@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+    <changeSet id="auth-001" author="shoplab"><sqlFile path="001_roles.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="auth-002" author="shoplab"><sqlFile path="002_users.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="auth-003" author="shoplab"><sqlFile path="003_user_roles.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="auth-004" author="shoplab"><sqlFile path="004_registration_event.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="auth-005" author="shoplab"><sqlFile path="005_rollback_result.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="auth-006" author="shoplab"><sqlFile path="006_audit_log.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="auth-007" author="shoplab"><sqlFile path="007_indexes.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="auth-008" author="shoplab"><sqlFile path="008_seed.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="auth-009" author="shoplab"><sqlFile path="009_touch_updated_at.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+</databaseChangeLog>

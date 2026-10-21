@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS order_status_log (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    old_status TEXT,
+    new_status TEXT NOT NULL,
+    changed_by VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS order_audit_log (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
+    action VARCHAR(100) NOT NULL,
+    details TEXT,
+    actor VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

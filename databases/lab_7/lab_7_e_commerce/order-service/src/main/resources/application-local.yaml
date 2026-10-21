@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5435/orders_db
+    username: orders_user
+    password: orders_pass_123
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8081/.well-known/jwks.json
+user-service:
+  base-url: http://localhost:8082/api/users
+  connection-timeout: 3000
+  read-timeout: 3000

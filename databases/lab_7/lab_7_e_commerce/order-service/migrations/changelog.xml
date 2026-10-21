@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+    <changeSet id="order-001" author="shoplab"><sqlFile path="001_categories_products.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="order-002" author="shoplab"><sqlFile path="002_orders.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="order-003" author="shoplab"><sqlFile path="003_order_items.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="order-004" author="shoplab"><sqlFile path="004_status_log.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="order-005" author="shoplab"><sqlFile path="005_indexes.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="order-006" author="shoplab"><sqlFile path="006_seed.sql" relativeToChangelogFile="true"/></changeSet>
+    <changeSet id="order-007" author="shoplab"><sqlFile path="007_touch_updated_at.sql" relativeToChangelogFile="true" splitStatements="false"/></changeSet>
+</databaseChangeLog>

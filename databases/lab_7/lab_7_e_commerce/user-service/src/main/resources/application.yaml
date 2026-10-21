@@ -1,0 +1,15 @@
+spring:
+  profiles:
+    default: local
+  application:
+    name: user-service
+server:
+  port: 8082
+kafka:
+  topics:
+    registration: user-registration
+    registration-result: user-registration-result
+  sender:
+    fixed-delay-ms: 2000
+cache:
+  profiles-ttl-minutes: 10

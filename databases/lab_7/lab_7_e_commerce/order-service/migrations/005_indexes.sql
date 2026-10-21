@@ -1,0 +1,11 @@
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
+CREATE INDEX IF NOT EXISTS idx_products_active_price ON products(active, price);
+CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products(name);
+CREATE INDEX IF NOT EXISTS idx_orders_buyer ON orders(buyer_profile_id);
+CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(buyer_email);
+CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_deleted ON orders(deleted) WHERE deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_items_product ON order_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_status_log_order_time ON order_status_log(order_id, created_at DESC);

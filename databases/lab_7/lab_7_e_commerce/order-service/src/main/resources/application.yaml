@@ -1,0 +1,17 @@
+spring:
+  profiles:
+    default: local
+  application:
+    name: order-service
+server:
+  port: 8083
+resilience4j:
+  circuitbreaker:
+    instances:
+      UserServiceCB:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 2

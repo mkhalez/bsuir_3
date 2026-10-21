@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${AUTH_SERVICE_URL:http://localhost:8081}/.well-known/jwks.json
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: auth-openapi-route
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates: [Path=/openapi/auth]
+              filters: ["SetPath=/v3/api-docs"]
+            - id: user-openapi-route
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates: [Path=/openapi/users]
+              filters: ["SetPath=/v3/api-docs"]
+            - id: order-openapi-route
+              uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+              predicates: [Path=/openapi/orders]
+              filters: ["SetPath=/v3/api-docs"]
+            - id: auth-refresh-route
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates: [Path=/api/auth/refresh]
+              filters: ["JwtClaimAuthorize=type,refresh"]
+            - id: auth-route
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates: [Path=/api/auth/**]
+            - id: user-route
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates: [Path=/api/users/**]
+              filters: ["JwtClaimAuthorize=type,access"]
+            - id: order-route
+              uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+              predicates: ["Path=/api/orders/**,/api/products/**"]
+              filters: ["JwtClaimAuthorize=type,access"]
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    urls-primary-name: All Services
+    urls:
+      - name: All Services
+        url: /openapi/all
+      - name: Auth Service
+        url: /openapi/auth
+      - name: User Service
+        url: /openapi/users
+      - name: Order Service
+        url: /openapi/orders
+app:
+  permit-all-routes:
+    - /swagger-ui.html
+    - /swagger-ui/**
+    - /webjars/**
+    - /v3/api-docs/**
+    - /openapi/**
+    - /api/auth/login
+    - /api/auth/signup
+    - /api/auth/status/**
+  authenticated-routes:
+    - /api/auth/**
+    - /api/users/**
+    - /api/orders/**
+    - /api/products/**
+server:
+  port: 8080
