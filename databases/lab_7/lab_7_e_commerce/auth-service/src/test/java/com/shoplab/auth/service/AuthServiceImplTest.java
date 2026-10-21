@@ -31,27 +31,27 @@ class AuthServiceImplTest {
     @InjectMocks AuthServiceImpl service;
 
     private SignupRequest signup() {
-        return new SignupRequest("john 설명했다", "secret123", "John", "Doe", "john@shop.by", LocalDate.of(1999, 5, 1));
+        return new SignupRequest("john_doe", "secret123", "John", "Doe", "john@shop.by", LocalDate.of(1999, 5, 1));
     }
 
     @Test
     void registerCreatesInactiveUserAndOutboxEvent() {
-        Mockito.when(users.existsByUsername("john 설명했다")).thenReturn(false);
+        Mockito.when(users.existsByUsername("john_doe")).thenReturn(false);
         Mockito.when(encoder.encode("secret123")).thenReturn("HASH");
-        Mockito.when(users.insert(eq("john 설명했다"), eq("HASH"), eq(false))).thenReturn(42L);
+        Mockito.when(users.insert(eq("john_doe"), eq("HASH"), eq(false))).thenReturn(42L);
 
         var eventId = service.register(signup(), "127.0.0.1");
 
         assertNotNull(eventId);
-        Mockito.verify(users).insert("john 설명했다", "HASH", false);
+        Mockito.verify(users).insert("john_doe", "HASH", false);
         Mockito.verify(users).assignRole(42L, "USER");
         Mockito.verify(events).save(eq(eventId), eq(42L), any());
-        Mockito.verify(audit).log(eq(42L), eq("john 설명했다"), eq("SIGNUP_INITIATED"), any(), eq("127.0.0.1"));
+        Mockito.verify(audit).log(eq(42L), eq("john_doe"), eq("SIGNUP_INITIATED"), any(), eq("127.0.0.1"));
     }
 
     @Test
     void registerDuplicateThrows() {
-        Mockito.when(users.existsByUsername("john 설명했다")).thenReturn(true);
+        Mockito.when(users.existsByUsername("john_doe")).thenReturn(true);
         assertThrows(IllegalStateException.class, () -> service.register(signup(), null));
     }
 
